@@ -1,9 +1,54 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/plus-jakarta-sans';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source '../views';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+
+    --color-brand: #078B4B;
+    --color-brand-dark: #075B37;
+    --color-danger: #D71920;
+    --color-gold: #E5B51B;
+    --color-mist: #F5F7F5;
+    --color-ink: #202820;
+}
+
+@layer base {
+    html { scroll-behavior: smooth; }
+    body { @apply bg-white font-sans text-ink antialiased; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+}
+
+@layer components {
+    .container-x { @apply mx-auto w-full max-w-6xl px-4 sm:px-6; }
+    .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition; }
+    .btn-primary { @apply bg-brand text-white shadow-sm hover:bg-brand-dark; }
+    .btn-outline { @apply border border-brand text-brand hover:bg-brand/10; }
+    .btn-light { @apply bg-white text-brand-dark hover:bg-mist; }
+    .card { @apply rounded-2xl border border-brand/10 bg-white p-6 shadow-sm; }
+    .eyebrow { @apply text-xs font-bold uppercase tracking-[.18em] text-brand; }
+    .gold-rule { @apply mt-3 h-1 w-14 rounded-full bg-gold; }
+    .section-title { @apply text-2xl font-extrabold text-brand-dark sm:text-3xl; }
+    .nav-link { @apply rounded-md px-3 py-2 text-sm font-semibold text-ink/80 transition hover:bg-brand/10 hover:text-brand-dark; }
+    .nav-link-active { @apply bg-brand/10 text-brand-dark; }
+
+    .prose-koperasi { @apply text-base leading-relaxed text-ink/90; }
+    .prose-koperasi > * + * { @apply mt-4; }
+    .prose-koperasi h2 { @apply mt-8 text-xl font-bold text-brand-dark; }
+    .prose-koperasi h3 { @apply mt-6 text-lg font-bold text-brand-dark; }
+    .prose-koperasi ul { @apply list-disc pl-6; }
+    .prose-koperasi ol { @apply list-decimal pl-6; }
+    .prose-koperasi a { @apply font-semibold text-brand underline; }
+    .prose-koperasi blockquote { @apply border-l-4 border-gold pl-4 italic; }
+    .prose-koperasi img { @apply h-auto max-w-full rounded-xl; }
+    .prose-koperasi table { @apply w-full border-collapse text-sm; }
+    .prose-koperasi th, .prose-koperasi td { @apply border border-brand/20 px-3 py-2 text-left; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .js [data-reveal] { opacity: 0; transform: translateY(24px); }
 }
