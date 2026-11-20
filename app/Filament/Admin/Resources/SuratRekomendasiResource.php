@@ -93,11 +93,11 @@ class SuratRekomendasiResource extends Resource
             ->defaultSort('berlaku_sampai', 'desc')
             ->filters([
                 SelectFilter::make('status_tampil')->label('Status')->options(['aktif' => 'Aktif', 'kedaluwarsa' => 'Kedaluwarsa', 'nonaktif' => 'Nonaktif'])
-                    ->query(function (Builder $q, array $data) {
+                    ->query(function (Builder $query, array $data) {
                         match ($data['value'] ?? null) {
-                            'aktif' => $q->where('status', 'aktif')->whereDate('berlaku_sampai', '>=', today()),
-                            'kedaluwarsa' => $q->where('status', 'aktif')->whereDate('berlaku_sampai', '<', today()),
-                            'nonaktif' => $q->where('status', 'nonaktif'),
+                            'aktif' => $query->where('status', 'aktif')->whereDate('berlaku_sampai', '>=', today()),
+                            'kedaluwarsa' => $query->where('status', 'aktif')->whereDate('berlaku_sampai', '<', today()),
+                            'nonaktif' => $query->where('status', 'nonaktif'),
                             default => null,
                         };
                     }),

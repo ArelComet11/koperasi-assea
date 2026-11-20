@@ -57,11 +57,11 @@ class JadwalPembelianResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(StatusJadwal::opsi()),
                 SelectFilter::make('rentang')->label('Tanggal')->options(['hari_ini' => 'Hari ini', 'minggu_ini' => '7 hari ke depan', 'bulan_ini' => 'Bulan ini'])
-                    ->query(function (Builder $q, array $d) {
-                        match ($d['value'] ?? null) {
-                            'hari_ini' => $q->whereDate('tanggal_waktu', today()),
-                            'minggu_ini' => $q->whereBetween('tanggal_waktu', [now()->startOfDay(), now()->addDays(7)->endOfDay()]),
-                            'bulan_ini' => $q->whereBetween('tanggal_waktu', [now()->startOfMonth(), now()->endOfMonth()]),
+                    ->query(function (Builder $query, array $data) {
+                        match ($data['value'] ?? null) {
+                            'hari_ini' => $query->whereDate('tanggal_waktu', today()),
+                            'minggu_ini' => $query->whereBetween('tanggal_waktu', [now()->startOfDay(), now()->addDays(7)->endOfDay()]),
+                            'bulan_ini' => $query->whereBetween('tanggal_waktu', [now()->startOfMonth(), now()->endOfMonth()]),
                             default => null,
                         };
                     }),

@@ -78,7 +78,7 @@ class PenerimaanBbmResource extends Resource
                 SelectFilter::make('status')->options(StatusPenerimaan::opsi()),
                 SelectFilter::make('periode')->label('Bulan')
                     ->options(fn () => collect(range(0, 11))->mapWithKeys(fn ($i) => [now()->startOfMonth()->subMonths($i)->toDateString() => now()->startOfMonth()->subMonths($i)->translatedFormat('F Y')])->all())
-                    ->query(fn (Builder $q, array $d) => ! empty($d['value']) ? $q->whereDate('periode', $d['value']) : $q),
+                    ->query(fn (Builder $query, array $data) => ! empty($data['value']) ? $query->whereDate('periode', $data['value']) : $query),
             ])
             ->recordActions([
                 ViewAction::make(),

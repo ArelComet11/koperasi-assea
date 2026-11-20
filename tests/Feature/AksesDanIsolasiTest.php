@@ -44,6 +44,30 @@ class AksesDanIsolasiTest extends TestCase
             ->assertOk();
     }
 
+    public function test_admin_dapat_buka_halaman_tabel_dengan_filter(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+
+        $urls = [
+            '/admin/jadwal-pembelian',
+            '/admin/penerimaan-bbm',
+            '/admin/surat-rekomendasi',
+            '/admin/pengajuan-pembelian',
+            '/admin/anggota',
+            '/admin/kapal',
+            '/admin/mutasi-stok',
+            '/admin/tagihan',
+            '/admin/pembayaran',
+            '/admin/riwayat-harga',
+            '/admin/users',
+        ];
+
+        foreach ($urls as $url) {
+            $this->get($url)->assertOk();
+        }
+    }
+
     public function test_pembatasan_akses_panel_menurut_role(): void
     {
         [$a, , , $u] = $this->buatAnggota();
