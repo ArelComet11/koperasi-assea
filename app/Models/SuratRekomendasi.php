@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SuratRekomendasi extends Model
@@ -41,6 +42,28 @@ class SuratRekomendasi extends Model
     public function pengajuan(): HasMany { return $this->hasMany(PengajuanPembelian::class); }
     public function kuotaBulanan(): HasMany { return $this->hasMany(KuotaRekomendasiBulanan::class); }
 
+    public function kuotaBulanIni(): HasOne
+    {
+        return $this->hasOne(KuotaRekomendasiBulanan::class)
+            ->withoutGlobalScopes()
+            ->where('periode', now()->startOfMonth()->toDateString());
+    }
+
+    /** Surat berstatus aktif dan masa berlakunya mencakup hari ini (ramah index pada MySQL, aman di SQLite). */
+    public function scopeAktifHariIni(Builder $query): Builder
+    {
+        $hariIni = today()->toDateString();
+        $query->where('status', StatusAktif::Aktif->value);
+
+        if ($query->getConnection()->getDriverName() === 'sqlite') {
+            return $query->whereDate('berlaku_mulai', '<=', $hariIni)
+                ->whereDate('berlaku_sampai', '>=', $hariIni);
+        }
+
+        return $query->where('berlaku_mulai', '<=', $hariIni)
+            ->where('berlaku_sampai', '>=', $hariIni);
+    }
+
     public function berlakuPada(CarbonInterface $tanggal): bool
     {
         $t = $tanggal->copy()->startOfDay();
@@ -50,11 +73,14 @@ class SuratRekomendasi extends Model
             && $t->lte($this->berlaku_sampai->copy()->startOfDay());
     }
 
-    /** aktif | kedaluwarsa | nonaktif (kedaluwarsa dihitung dari tanggal, bukan disimpan). */
+    /** aktif | belum_berlaku | kedaluwarsa | nonaktif (kedaluwarsa & belum berlaku dihitung dari tanggal). */
     public function getStatusTampilAttribute(): string
     {
         if ($this->status !== StatusAktif::Aktif) {
             return 'nonaktif';
+        }
+        if ($this->berlaku_mulai->copy()->startOfDay()->isFuture()) {
+            return 'belum_berlaku';
         }
 
         return $this->berlaku_sampai->copy()->endOfDay()->isPast() ? 'kedaluwarsa' : 'aktif';

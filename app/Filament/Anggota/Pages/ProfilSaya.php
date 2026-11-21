@@ -3,11 +3,12 @@
 namespace App\Filament\Anggota\Pages;
 
 use App\Services\AuditService;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class ProfilSaya extends Page
 {
@@ -21,12 +22,14 @@ class ProfilSaya extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) auth()->user()?->hasRole('anggota');
+        return (bool) Otorisasi::user()?->hasRole('anggota');
     }
 
     protected function getViewData(): array
     {
-        return ['anggota' => auth()->user()->anggota, 'user' => auth()->user()];
+        $user = Otorisasi::userWajib();
+
+        return ['anggota' => $user->anggota, 'user' => $user];
     }
 
     protected function getHeaderActions(): array
@@ -34,18 +37,15 @@ class ProfilSaya extends Page
         return [
             Action::make('ubahPassword')->label('Ubah kata sandi')->icon('heroicon-o-key')
                 ->schema([
-                    TextInput::make('lama')->label('Kata sandi saat ini')->password()->revealable()->required(),
+                    TextInput::make('lama')->label('Kata sandi saat ini')->password()->revealable()->required()->rule('current_password'),
                     TextInput::make('baru')->label('Kata sandi baru')->password()->revealable()->required()->minLength(8)->different('lama'),
                     TextInput::make('baru_konfirmasi')->label('Ulangi kata sandi baru')->password()->revealable()->required()->same('baru'),
                 ])
                 ->action(function (array $data) {
-                    $user = auth()->user();
-                    if (! Hash::check($data['lama'], $user->password)) {
-                        Notification::make()->title('Kata sandi saat ini tidak sesuai')->danger()->send();
-
-                        return;
-                    }
+                    $user = Otorisasi::userWajib();
                     $user->forceFill(['password' => $data['baru']])->save();
+                    session()->put('password_hash_web', $user->getAuthPassword());
+                    DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', session()->getId())->delete();
                     AuditService::catat('auth.password_diubah', $user->anggota, null, null, 'Anggota mengubah kata sandi', $user);
                     Notification::make()->title('Kata sandi berhasil diubah')->success()->send();
                 }),

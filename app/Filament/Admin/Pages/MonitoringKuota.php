@@ -7,6 +7,7 @@ use App\Models\SuratRekomendasi;
 use App\Services\KuotaService;
 use App\Support\Dec;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Carbon\Carbon;
 use Filament\Pages\Page;
 
@@ -23,7 +24,7 @@ class MonitoringKuota extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) auth()->user()?->can('surat.view');
+        return Otorisasi::bisa('surat.view');
     }
 
     protected function getViewData(): array

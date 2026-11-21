@@ -28,7 +28,7 @@ class KuotaRekomendasiBulanan extends Model
 
     protected static function batasiKeAnggota(Builder $query, int $anggotaId): void
     {
-        $query->whereHas('suratRekomendasi', fn (Builder $q) => $q->where('anggota_id', $anggotaId));
+        $query->whereHas('suratRekomendasi', fn (Builder $q) => $q->withoutGlobalScope('milik_anggota')->where('anggota_id', $anggotaId));
     }
 
     public function suratRekomendasi(): BelongsTo { return $this->belongsTo(SuratRekomendasi::class); }

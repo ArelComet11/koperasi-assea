@@ -5,6 +5,7 @@ namespace App\Filament\Anggota\Resources\PengajuanSayaResource\Pages;
 use App\Filament\Anggota\Resources\PengajuanSayaResource;
 use App\Filament\Concerns\Bisnis;
 use App\Services\PengajuanService;
+use App\Support\Otorisasi;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Resources\Pages\CreateRecord;
@@ -15,7 +16,7 @@ class CreatePengajuanSaya extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $p = Bisnis::jalankan(fn () => app(PengajuanService::class)->ajukan(auth()->user()->anggota, $data), 'Pengajuan terkirim dan menunggu persetujuan admin.');
+        $p = Bisnis::jalankan(fn () => app(PengajuanService::class)->ajukan(Otorisasi::userWajib()->anggota, $data), 'Pengajuan terkirim dan menunggu persetujuan admin.');
 
         if (! $p instanceof Model) {
             throw new Halt();

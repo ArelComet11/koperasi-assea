@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ManageRecords;
 use App\Filament\Concerns\Bisnis;
 use App\Models\RiwayatHarga;
 use App\Services\HargaService;
+use App\Support\Otorisasi;
 use Filament\Support\Exceptions\Halt;
 
 class ManageRiwayatHarga extends ManageRecords
@@ -18,9 +19,9 @@ class ManageRiwayatHarga extends ManageRecords
     {
         return [
             CreateAction::make()->label('Ubah harga')->icon('heroicon-o-pencil-square')
-                ->visible(fn () => auth()->user()->can('harga.update'))
+                ->visible(fn () => Otorisasi::bisa('harga.update'))
                 ->using(function (array $data): RiwayatHarga {
-                    $baris = Bisnis::jalankan(fn () => app(HargaService::class)->ubah($data['harga_per_liter'], $data['alasan'], auth()->user()), 'Harga BBM diperbarui.');
+                    $baris = Bisnis::jalankan(fn () => app(HargaService::class)->ubah($data['harga_per_liter'], $data['alasan'], Otorisasi::userWajib()), 'Harga BBM diperbarui.');
 
                     if (! $baris instanceof RiwayatHarga) {
                         throw new Halt();

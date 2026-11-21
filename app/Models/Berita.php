@@ -25,6 +25,15 @@ class Berita extends Model
     public function kategori(): BelongsTo { return $this->belongsTo(KategoriBerita::class, 'kategori_berita_id'); }
     public function penulis(): BelongsTo { return $this->belongsTo(User::class, 'penulis_id'); }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Berita $berita): void {
+            if ($berita->status === StatusBerita::Terbit && $berita->published_at === null) {
+                $berita->published_at = now();
+            }
+        });
+    }
+
     public function scopeTerbit(Builder $q): Builder
     {
         return $q->where('status', StatusBerita::Terbit->value)->where('published_at', '<=', now());

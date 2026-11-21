@@ -106,8 +106,8 @@ class PengajuanService
                 'status_penyaluran' => StatusPenyaluran::Belum,
             ])->save();
 
-            $this->catatStatus($p, null, StatusPengajuan::MenungguPersetujuan, null, auth()->user());
-            AuditService::catat('pengajuan.dibuat', $p, null, ['nomor' => $p->nomor_pengajuan, 'liter' => $liter], null);
+            $this->catatStatus($p, null, StatusPengajuan::MenungguPersetujuan, null, $anggota->user);
+            AuditService::catat('pengajuan.dibuat', $p, null, ['nomor' => $p->nomor_pengajuan, 'liter' => $liter], null, $anggota->user);
 
             return $p;
         });
@@ -237,10 +237,11 @@ class PengajuanService
                 throw new BisnisException('Pembayaran sudah lunas. Batalkan pembayaran terlebih dahulu sebelum membatalkan pengajuan.');
             }
 
+            // Urutan kunci konsisten dengan PenyaluranService: pengajuan -> alokasi -> kuota -> pasokan -> stok
+            $alokasi = AlokasiBbm::query()->lockForUpdate()->where('pengajuan_id', $p->id)->firstOrFail();
             $surat = SuratRekomendasi::withoutGlobalScopes()->findOrFail($p->surat_rekomendasi_id);
             $kuota = $this->kuota->baris($surat, $p->periode_kuota);
             $pas = $this->pasokan->baris($p->periode_kuota);
-            $alokasi = AlokasiBbm::query()->lockForUpdate()->where('pengajuan_id', $p->id)->firstOrFail();
             $sisa = $alokasi->liter_aktif;
 
             if (Dec::gt($sisa, 0)) {
@@ -285,26 +286,27 @@ class PengajuanService
 
             $alasan = trim((string) $alasan) !== '' ? trim($alasan) : 'Dibatalkan oleh anggota';
             $p->forceFill([
-                'status' => StatusPengajuan::Dibatalkan, 'dibatalkan_oleh' => auth()->id(),
+                'status' => StatusPengajuan::Dibatalkan, 'dibatalkan_oleh' => $anggota->user_id,
                 'dibatalkan_pada' => now(), 'alasan_pembatalan' => $alasan,
             ])->save();
 
-            $this->catatStatus($p, StatusPengajuan::MenungguPersetujuan, StatusPengajuan::Dibatalkan, $alasan, auth()->user());
-            AuditService::catat('pengajuan.dibatalkan_anggota', $p, null, ['alasan' => $alasan], $p->nomor_pengajuan);
+            $this->catatStatus($p, StatusPengajuan::MenungguPersetujuan, StatusPengajuan::Dibatalkan, $alasan, $anggota->user);
+            AuditService::catat('pengajuan.dibatalkan_anggota', $p, null, ['alasan' => $alasan], $p->nomor_pengajuan, $anggota->user);
 
             return $p;
         });
     }
 
     /** Transaksi selesai hanya bila pembayaran lunas DAN penyaluran tercatat. Dipanggil di dalam transaksi pemanggil. */
-    public function selesaikanJikaLengkap(PengajuanPembelian $p): bool
+    public function selesaikanJikaLengkap(PengajuanPembelian $p, ?User $user = null): bool
     {
         if ($p->status === StatusPengajuan::Disetujui
             && $p->status_pembayaran === StatusPembayaran::Lunas
             && $p->status_penyaluran === StatusPenyaluran::Selesai) {
+            $aktor = $user ?? Otorisasi::user();
             $p->forceFill(['status' => StatusPengajuan::Selesai, 'selesai_pada' => now()])->save();
-            $this->catatStatus($p, StatusPengajuan::Disetujui, StatusPengajuan::Selesai, null, auth()->user());
-            AuditService::catat('pengajuan.selesai', $p, null, null, $p->nomor_pengajuan);
+            $this->catatStatus($p, StatusPengajuan::Disetujui, StatusPengajuan::Selesai, null, $aktor);
+            AuditService::catat('pengajuan.selesai', $p, null, null, $p->nomor_pengajuan, $aktor);
 
             return true;
         }

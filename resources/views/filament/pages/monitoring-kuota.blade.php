@@ -2,7 +2,8 @@
     <style>
         .kt-form{display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem}
         .kt-form label{display:block;font-size:.75rem;font-weight:600;margin-bottom:.2rem;opacity:.8}
-        .kt-in{border:1px solid rgba(128,128,128,.4);border-radius:.5rem;padding:.45rem .65rem;background:transparent;color:inherit;font-size:.875rem}
+        .kt-in{border:1px solid rgba(128,128,128,.4);border-radius:.5rem;padding:.45rem .65rem;background:transparent;color:inherit;font-size:.875rem;color-scheme:light dark}
+        .dark .kt-in,.dark .kt-in option{background-color:#18181b;color:#f4f4f5}
         .kt-btn{background:#078B4B;color:#fff;border:0;border-radius:.5rem;padding:.5rem 1rem;font-weight:600;font-size:.875rem;cursor:pointer}
         .kt-wrap{overflow-x:auto;border:1px solid rgba(128,128,128,.25);border-radius:.75rem}
         .kt-t{width:100%;border-collapse:collapse;font-size:.85rem}

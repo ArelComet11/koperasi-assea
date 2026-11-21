@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Filament\Support\BulananChart;
 use App\Models\PengajuanPembelian;
+use Carbon\Carbon;
 
 class GrafikTransaksi extends BulananChart
 {
@@ -15,7 +16,12 @@ class GrafikTransaksi extends BulananChart
 
     protected function deret(int $tahun): array
     {
-        $rows = PengajuanPembelian::query()->where('status', 'selesai')->whereYear('selesai_pada', $tahun)->get(['selesai_pada']);
+        $awal = Carbon::create($tahun, 1, 1)->startOfDay();
+        $akhir = Carbon::create($tahun, 12, 31)->endOfDay();
+        $rows = PengajuanPembelian::query()
+            ->where('status', 'selesai')
+            ->whereBetween('selesai_pada', [$awal, $akhir])
+            ->get(['selesai_pada']);
 
         return $this->perBulan($rows, 'selesai_pada');
     }

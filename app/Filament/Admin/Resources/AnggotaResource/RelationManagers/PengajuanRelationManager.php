@@ -24,8 +24,8 @@ class PengajuanRelationManager extends RelationManager
             TextColumn::make('nomor_pengajuan')->label('No. pengajuan'),
             TextColumn::make('created_at')->label('Tanggal')->date('d/m/Y'),
             TextColumn::make('kapal.nama_kapal')->label('Kapal'),
-            TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
-            TextColumn::make('total_tagihan')->label('Total')->formatStateUsing(fn ($s, $record) => Format::rupiah($s ?? $record->total_estimasi)),
+            TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
+            TextColumn::make('total_tagihan')->label('Total')->formatStateUsing(fn ($state, $record) => Format::rupiah($state ?? $record->total_estimasi)),
             TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
         ])->paginated([10, 25]);
     }

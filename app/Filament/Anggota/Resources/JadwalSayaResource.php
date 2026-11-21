@@ -30,7 +30,7 @@ class JadwalSayaResource extends Resource
                 TextColumn::make('nomor_jadwal')->label('No. jadwal'),
                 TextColumn::make('pengajuan.nomor_pengajuan')->label('No. pengajuan'),
                 TextColumn::make('pengajuan.kapal.nama_kapal')->label('Kapal'),
-                TextColumn::make('liter_disetujui')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
+                TextColumn::make('liter_disetujui')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('keterangan')->placeholder('-')->wrap(),
             ])

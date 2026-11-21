@@ -43,7 +43,10 @@ class KapalResource extends Resource
     {
         return $schema->components([
             Select::make('anggota_id')->label('Anggota pemilik')->required()->searchable()
-                ->options(fn () => Anggota::query()->orderBy('nama_lengkap')->pluck('nama_lengkap', 'id'))
+                ->options(fn (string $operation, ?Kapal $record) => Anggota::query()
+                    ->when($operation === 'create', fn ($q) => $q->where('status', StatusAktif::Aktif->value))
+                    ->when($operation !== 'create' && $record, fn ($q) => $q->where('status', StatusAktif::Aktif->value)->orWhereKey($record->anggota_id))
+                    ->orderBy('nama_lengkap')->pluck('nama_lengkap', 'id'))
                 ->disabledOn('edit')->helperText('Pemilik tidak dapat dipindahkan setelah kapal dibuat (menjaga keterkaitan riwayat transaksi).'),
             TextInput::make('kode_kapal')->required()->maxLength(30)->unique(ignoreRecord: true),
             TextInput::make('nama_kapal')->required()->maxLength(150),
@@ -72,7 +75,7 @@ class KapalResource extends Resource
                 RepeatableEntry::make('pengajuan')->label('')->schema([
                     TextEntry::make('nomor_pengajuan')->label('No. pengajuan'),
                     TextEntry::make('created_at')->label('Tanggal')->date('d/m/Y'),
-                    TextEntry::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
+                    TextEntry::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
                     TextEntry::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
                 ])->columns(4),
             ])->collapsible(),

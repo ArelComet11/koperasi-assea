@@ -34,6 +34,9 @@ class HargaService
 
         return DB::transaction(function () use ($harga, $alasan, $user) {
             $lama = $this->aktif();
+            if (Dec::eq($harga, $lama)) {
+                throw new BisnisException('Harga baru sama dengan harga aktif saat ini.');
+            }
             $baris = RiwayatHarga::create([
                 'harga_per_liter' => $harga, 'berlaku_mulai' => now(), 'diubah_oleh' => $user->id, 'alasan' => trim($alasan),
             ]);

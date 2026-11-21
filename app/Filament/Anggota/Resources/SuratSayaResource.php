@@ -11,6 +11,7 @@ use Filament\Actions\Action;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SuratSayaResource extends Resource
 {
@@ -27,15 +28,19 @@ class SuratSayaResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['kapal', 'kuotaBulanIni']))
             ->columns([
                 TextColumn::make('nomor_surat')->label('Nomor surat')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
                 TextColumn::make('berlaku_mulai')->label('Berlaku dari')->date('d/m/Y'),
                 TextColumn::make('berlaku_sampai')->label('Berlaku sampai')->date('d/m/Y'),
-                TextColumn::make('status_tampil')->label('Status')->badge()->formatStateUsing(fn ($s) => ucfirst($s))
-                    ->color(fn ($s) => match ($s) { 'aktif' => 'success', 'kedaluwarsa' => 'danger', default => 'gray' }),
+                TextColumn::make('status_tampil')->label('Status')->badge()
+                    ->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))
+                    ->color(fn ($state) => match ($state) { 'aktif' => 'success', 'belum_berlaku' => 'info', 'kedaluwarsa' => 'danger', default => 'gray' }),
                 TextColumn::make('kuota')->label('Kuota/bulan')->state(fn (SuratRekomendasi $r) => Format::liter(app(KuotaService::class)->batas($r))),
-                TextColumn::make('sisa')->label('Sisa bulan ini')->state(fn (SuratRekomendasi $r) => Format::liter(app(KuotaService::class)->sisa($r)))->weight('bold'),
+                TextColumn::make('sisa')->label('Sisa bulan ini')
+                    ->state(fn (SuratRekomendasi $r) => $r->status_tampil === 'aktif' ? Format::liter(app(KuotaService::class)->sisa($r)) : '-')
+                    ->weight('bold'),
             ])
             ->defaultSort('berlaku_sampai', 'desc')
             ->recordActions([

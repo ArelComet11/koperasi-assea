@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\ImageColumn;
@@ -53,8 +54,9 @@ class BeritaResource extends Resource
             Textarea::make('ringkasan')->maxLength(500)->columnSpanFull(),
             RichEditor::make('konten')->required()->columnSpanFull(),
             FileUpload::make('gambar')->image()->disk('public')->directory('berita')->maxSize(2048)->helperText('Maksimal 2 MB.'),
-            Select::make('status')->options(StatusBerita::opsi())->default('draft')->required(),
-            DateTimePicker::make('published_at')->label('Tanggal terbit')->default(now())->seconds(false),
+            Select::make('status')->options(StatusBerita::opsi())->default('draft')->required()->live(),
+            DateTimePicker::make('published_at')->label('Tanggal terbit')->default(now())->seconds(false)
+                ->required(fn (Get $get) => $get('status') === StatusBerita::Terbit->value),
         ])->columns(2);
     }
 

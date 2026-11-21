@@ -22,8 +22,8 @@ class RiwayatRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('created_at')->label('Waktu')->dateTime('d/m/Y H:i'),
-                TextColumn::make('dari_status')->label('Dari')->formatStateUsing(fn ($s) => $s ? ucfirst(str_replace('_', ' ', $s)) : '-'),
-                TextColumn::make('ke_status')->label('Menjadi')->formatStateUsing(fn ($s) => ucfirst(str_replace('_', ' ', $s)))->badge(),
+                TextColumn::make('dari_status')->label('Dari')->formatStateUsing(fn ($state) => $state ? ucfirst(str_replace('_', ' ', (string) $state)) : '-'),
+                TextColumn::make('ke_status')->label('Menjadi')->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))->badge(),
                 TextColumn::make('user.name')->label('Oleh')->placeholder('-'),
                 TextColumn::make('alasan')->placeholder('-')->wrap(),
             ])

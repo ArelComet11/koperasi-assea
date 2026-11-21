@@ -4,19 +4,22 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Models\PengajuanPembelian;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 
 class PengajuanTerbaru extends TableWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static ?int $sort = 6;
 
     protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('pengajuan.view');
+        return Otorisasi::bisa('pengajuan.view');
     }
 
     public function table(Table $table): Table
@@ -28,7 +31,7 @@ class PengajuanTerbaru extends TableWidget
                 TextColumn::make('nomor_pengajuan')->label('No.'),
                 TextColumn::make('anggota.nama_lengkap')->label('Anggota'),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
-                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
+                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('created_at')->label('Diajukan')->since(),
                 TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
             ])

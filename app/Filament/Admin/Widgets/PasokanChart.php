@@ -4,17 +4,20 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Models\KuotaPasokanBulanan;
 use App\Services\PasokanService;
+use App\Support\Otorisasi;
 use Filament\Widgets\ChartWidget;
 
 class PasokanChart extends ChartWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static bool $isDiscovered = false;
 
     protected ?string $maxHeight = '300px';
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('penerimaan.view');
+        return Otorisasi::bisa('penerimaan.view');
     }
 
     public function getHeading(): ?string

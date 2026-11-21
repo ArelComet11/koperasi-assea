@@ -17,6 +17,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Role;
 
 /** Akun staf (admin & finance). Akun anggota dikelola lewat menu Anggota. */
 class UserResource extends Resource
@@ -51,11 +53,25 @@ class UserResource extends Resource
                 TextInput::make('password')->label('Kata sandi')->password()->revealable()->minLength(8)
                     ->required(fn (string $operation) => $operation === 'create')
                     ->dehydrated(fn ($state) => filled($state))->helperText('Saat mengubah, kosongkan bila tidak ingin mengganti.'),
-                Toggle::make('is_active')->label('Akun aktif')->default(true),
+                Toggle::make('is_active')->label('Akun aktif')->default(true)
+                    ->disabled(fn (?User $record) => $record !== null && $record->id === Auth::id())
+                    ->helperText(fn (?User $record) => $record !== null && $record->id === Auth::id() ? 'Anda tidak dapat menonaktifkan akun sendiri.' : null),
             ])->columns(2),
             Section::make('Peran dan izin')->description('Finance tidak dapat menyetujui pengajuan atau mengubah harga kecuali diberi izin tambahan di bawah.')->schema([
-                Select::make('roles')->label('Peran')->relationship('roles', 'name', fn (Builder $query) => $query->whereIn('name', ['admin', 'finance']))->multiple()->preload()->required(),
-                CheckboxList::make('permissions')->label('Izin tambahan')->relationship('permissions', 'name')->columns(3)->searchable()->bulkToggleable(),
+                Select::make('roles')->label('Peran')->relationship('roles', 'name', fn (Builder $query) => $query->whereIn('name', ['admin', 'finance']))->multiple()->preload()->required()
+                    ->rule(fn (?User $record) => function (string $attribute, $value, \Closure $fail) use ($record) {
+                        if ($record === null || $record->id !== Auth::id() || ! $record->hasRole('admin')) {
+                            return;
+                        }
+                        $adminRoleId = Role::query()->where('name', 'admin')->value('id');
+                        $terpilih = array_map('intval', is_array($value) ? $value : []);
+                        if ($adminRoleId && ! in_array((int) $adminRoleId, $terpilih, true)) {
+                            $fail('Anda tidak dapat mencabut peran admin dari akun sendiri.');
+                        }
+                    }),
+                CheckboxList::make('permissions')->label('Izin tambahan')
+                    ->relationship('permissions', 'name', fn (Builder $query) => $query->where('name', '!=', 'pengajuan.create'))
+                    ->columns(3)->searchable()->bulkToggleable(),
             ]),
         ]);
     }

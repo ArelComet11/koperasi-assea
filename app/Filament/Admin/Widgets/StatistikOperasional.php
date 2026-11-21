@@ -13,16 +13,19 @@ use App\Models\PenyaluranBbm;
 use App\Models\SuratRekomendasi;
 use App\Services\StokService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatistikOperasional extends StatsOverviewWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static ?int $sort = 1;
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('penerimaan.view');
+        return Otorisasi::bisa('penerimaan.view');
     }
 
     protected function getHeading(): ?string

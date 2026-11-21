@@ -30,7 +30,7 @@ class RiwayatPembayaranResource extends Resource
                 TextColumn::make('tanggal_pembayaran')->label('Tanggal')->dateTime('d/m/Y H:i')->sortable(),
                 TextColumn::make('nomor_pembayaran')->label('No. pembayaran')->searchable(),
                 TextColumn::make('tagihan.pengajuan.nomor_pengajuan')->label('No. pengajuan'),
-                TextColumn::make('jumlah')->formatStateUsing(fn ($s) => Format::rupiah($s)),
+                TextColumn::make('jumlah')->formatStateUsing(fn ($state) => Format::rupiah($state)),
                 TextColumn::make('metode')->badge(),
                 TextColumn::make('status')->badge(),
             ])

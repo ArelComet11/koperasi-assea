@@ -31,7 +31,7 @@ class MutasiStokResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $delta = fn ($s) => ($s > 0 ? '+' : '') . Format::liter($s);
+        $delta = fn ($state) => ($state > 0 ? '+' : '') . Format::liter($state);
 
         return $table
             ->columns([
@@ -39,8 +39,8 @@ class MutasiStokResource extends Resource
                 TextColumn::make('jenis')->badge(),
                 TextColumn::make('delta_fisik')->label('Δ Fisik')->formatStateUsing($delta),
                 TextColumn::make('delta_alokasi')->label('Δ Alokasi')->formatStateUsing($delta),
-                TextColumn::make('saldo_fisik')->label('Stok fisik')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextColumn::make('saldo_alokasi')->label('Dialokasikan')->formatStateUsing(fn ($s) => Format::liter($s)),
+                TextColumn::make('saldo_fisik')->label('Stok fisik')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextColumn::make('saldo_alokasi')->label('Dialokasikan')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('keterangan')->wrap()->searchable(),
                 TextColumn::make('pembuat.name')->label('Oleh')->placeholder('-')->toggleable(),
             ])

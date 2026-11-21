@@ -40,7 +40,9 @@ class PengaturanResource extends Resource
 
         return $schema->components([
             TextInput::make('label')->disabled()->dehydrated(false)->columnSpanFull(),
-            TextInput::make('nilai_string')->label('Nilai')->maxLength(500)->visible($tipe('string'))->columnSpanFull(),
+            TextInput::make('nilai_string')->label('Nilai')->maxLength(500)->visible($tipe('string'))->columnSpanFull()
+                ->email(fn (?Pengaturan $record) => $record?->kunci === 'koperasi.email')
+                ->url(fn (?Pengaturan $record) => in_array($record?->kunci, ['koperasi.peta', 'sosial.facebook', 'sosial.instagram', 'sosial.youtube'], true)),
             TextInput::make('nilai_angka')->label('Nilai (angka)')->numeric()->minValue(1)->required()->visible($tipe('number'))->columnSpanFull(),
             Textarea::make('nilai_text')->label('Nilai')->rows(4)->maxLength(2000)->visible($tipe('text'))->columnSpanFull(),
             RichEditor::make('nilai_rich')->label('Isi')->visible($tipe('richtext'))->columnSpanFull(),
@@ -55,7 +57,8 @@ class PengaturanResource extends Resource
             ->columns([
                 TextColumn::make('kelompok')->badge()->sortable(),
                 TextColumn::make('label')->searchable()->wrap(),
-                TextColumn::make('nilai')->limit(70)->placeholder('(belum diisi)')->html(false)->formatStateUsing(fn ($s) => strip_tags((string) $s)),
+                TextColumn::make('nilai')->limit(70)->placeholder('(belum diisi)')->html(false)
+                    ->formatStateUsing(fn ($state) => $state === null || $state === '' ? null : strip_tags((string) $state)),
             ])
             ->defaultSort('kelompok')
             ->filters([SelectFilter::make('kelompok')->options(fn () => Pengaturan::query()->distinct()->pluck('kelompok', 'kelompok')->all())])

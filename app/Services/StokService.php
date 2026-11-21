@@ -9,6 +9,7 @@ use App\Models\StokBbm;
 use App\Models\User;
 use App\Support\Dec;
 use App\Support\Otorisasi;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +30,7 @@ class StokService
         return StokBbm::query()->lockForUpdate()->findOrFail(1);
     }
 
-    public function catat(JenisMutasi $jenis, string $deltaFisik, string $deltaAlokasi, ?Model $referensi, ?string $keterangan, ?User $user): MutasiStok
+    public function catat(JenisMutasi $jenis, string $deltaFisik, string $deltaAlokasi, ?Model $referensi, ?string $keterangan, ?User $user, ?CarbonInterface $tanggal = null): MutasiStok
     {
         $s = $this->saldo();
         $fisik = Dec::add($s->stok_fisik, $deltaFisik);
@@ -48,7 +49,7 @@ class StokService
         $s->forceFill(['stok_fisik' => $fisik, 'stok_dialokasikan' => $alokasi])->save();
 
         return MutasiStok::create([
-            'tanggal' => now(),
+            'tanggal' => $tanggal ?? now(),
             'jenis' => $jenis->value,
             'delta_fisik' => Dec::n($deltaFisik),
             'delta_alokasi' => Dec::n($deltaAlokasi),

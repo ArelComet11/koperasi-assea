@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\PengaturanResource\Pages;
 
 use App\Filament\Admin\Resources\PengaturanResource;
-use Filament\Resources\Pages\EditRecord;
+use App\Services\KuotaService;
 use App\Services\PasokanService;
 use App\Services\PengaturanService;
+use App\Support\Otorisasi;
+use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
 class EditPengaturan extends EditRecord
@@ -14,10 +16,14 @@ class EditPengaturan extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $nilai = $this->getRecord()->nilai;
-        $data['nilai_string'] = $data['nilai_text'] = $data['nilai_rich'] = $nilai;
-        $data['nilai_angka'] = $nilai;
-        $data['nilai_file'] = $nilai ?: null;
+        $record = $this->getRecord();
+        $nilai = $record->nilai;
+
+        $data['nilai_string'] = $record->tipe === 'string' ? $nilai : null;
+        $data['nilai_angka'] = $record->tipe === 'number' ? $nilai : null;
+        $data['nilai_text'] = $record->tipe === 'text' ? $nilai : null;
+        $data['nilai_rich'] = $record->tipe === 'richtext' ? $nilai : null;
+        $data['nilai_file'] = $record->tipe === 'file' ? ($nilai ?: null) : null;
 
         return $data;
     }
@@ -36,10 +42,12 @@ class EditPengaturan extends EditRecord
             $nilai = reset($nilai) ?: null;
         }
 
-        app(PengaturanService::class)->set($record->kunci, $nilai, auth()->user());
+        app(PengaturanService::class)->set($record->kunci, $nilai, Otorisasi::userWajib());
 
         if ($record->kunci === 'pasokan.batas_bulanan') {
             app(PasokanService::class)->terapkanBatasBaru();
+        } elseif ($record->kunci === 'kuota.surat_bulanan') {
+            app(KuotaService::class)->terapkanBatasBaru();
         }
 
         return $record->refresh();

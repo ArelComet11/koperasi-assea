@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\AnggotaResource;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Concerns\Bisnis;
 use App\Services\AnggotaService;
+use App\Support\Otorisasi;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +16,7 @@ class CreateAnggota extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $anggota = Bisnis::jalankan(fn () => app(AnggotaService::class)->buat($data, auth()->user()));
+        $anggota = Bisnis::jalankan(fn () => app(AnggotaService::class)->buat($data, Otorisasi::userWajib()));
 
         if (! $anggota instanceof Model) {
             throw new Halt();

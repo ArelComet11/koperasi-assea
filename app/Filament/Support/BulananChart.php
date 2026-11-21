@@ -2,11 +2,14 @@
 
 namespace App\Filament\Support;
 
+use App\Support\Otorisasi;
 use Filament\Widgets\ChartWidget;
 
 /** Dasar grafik 12 bulan dengan filter tahun. Subclass cukup mengisi deret(). */
 abstract class BulananChart extends ChartWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static string $izin = '';
     protected static string $judul = '';
     protected static string $label = '';
@@ -20,7 +23,7 @@ abstract class BulananChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can(static::$izin);
+        return Otorisasi::bisa(static::$izin);
     }
 
     public function getHeading(): ?string

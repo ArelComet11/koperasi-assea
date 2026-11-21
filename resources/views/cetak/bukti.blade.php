@@ -23,5 +23,24 @@
 <tr><td>Metode</td><td>{{ $bayar->metode->getLabel() }}@if($bayar->nomor_bukti) · {{ $bayar->nomor_bukti }}@endif</td></tr>
 <tr><td>Jumlah dibayar</td><td class="total">{{ \App\Support\Format::rupiah($bayar->jumlah) }}</td></tr>
 <tr><td>Diterima oleh</td><td>{{ $bayar->penerima?->name }}</td></tr>
+@if($bayar->tagihan->penyesuaian->isNotEmpty())
+@php
+    $selisihTotal = $bayar->tagihan->penyesuaian->sum('selisih');
+    $adaTertunda = $bayar->tagihan->penyesuaian->contains(fn ($p) => ! $p->diterapkan);
+    $nominalRefund = \App\Support\Dec::lt($selisihTotal, 0) ? \App\Support\Dec::sub('0', $selisihTotal) : '0.00';
+    $neto = \App\Support\Dec::max0(\App\Support\Dec::sub($bayar->jumlah, $nominalRefund));
+@endphp
+<tr><td>Koreksi / pengembalian selisih</td><td>
+    <strong>{{ \App\Support\Format::rupiah($nominalRefund) }}</strong>
+    ({{ $adaTertunda ? 'Menunggu pengembalian ke anggota' : 'Sudah dikembalikan / dikoreksi' }})
+    @if($bayar->tagihan->pengajuan?->penyaluran)
+        <br><small>Realisasi penyaluran aktual: {{ \App\Support\Format::liter($bayar->tagihan->pengajuan->penyaluran->liter_aktual) }} · Nilai neto: {{ \App\Support\Format::rupiah($neto) }}</small>
+    @endif
+</td></tr>
+@endif
+@if($bayar->status !== \App\Enums\StatusPembayaranCatatan::Sah)
+<tr><td>Waktu dibatalkan</td><td>{{ $bayar->dibatalkan_pada?->translatedFormat('d F Y H:i') ?? '-' }}</td></tr>
+<tr><td>Alasan pembatalan</td><td>{{ $bayar->alasan_pembatalan ?: '-' }}</td></tr>
+@endif
 </table>
 </body></html>

@@ -45,7 +45,7 @@ class RiwayatHargaResource extends Resource
             ->heading(fn () => 'Harga aktif saat ini: ' . Format::rupiah(app(HargaService::class)->aktif()) . ' per liter')
             ->columns([
                 TextColumn::make('berlaku_mulai')->label('Berlaku sejak')->dateTime('d/m/Y H:i')->sortable(),
-                TextColumn::make('harga_per_liter')->label('Harga/liter')->formatStateUsing(fn ($s) => Format::rupiah($s)),
+                TextColumn::make('harga_per_liter')->label('Harga/liter')->formatStateUsing(fn ($state) => Format::rupiah($state)),
                 TextColumn::make('pengubah.name')->label('Diubah oleh')->placeholder('Sistem'),
                 TextColumn::make('alasan')->placeholder('-')->wrap(),
             ])

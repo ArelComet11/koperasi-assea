@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Login;
+use App\Filament\Support\AvatarLokal;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -32,7 +33,9 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('components.logo-brand'))
             ->brandLogoHeight('2.75rem')
             ->favicon(asset('images/logo-koperasi.png'))
-            ->font('Plus Jakarta Sans')
+            ->defaultAvatarProvider(AvatarLokal::class)
+            ->spa()
+            ->spaUrlExceptions(fn (): array => [url('/dokumen/*'), url('/cetak/*'), url('/laporan/*')])
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'primary' => Color::hex('#078B4B'),

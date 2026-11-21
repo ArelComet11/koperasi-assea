@@ -4,16 +4,19 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Services\StokService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StokStats extends StatsOverviewWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static bool $isDiscovered = false;
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('stok.view');
+        return Otorisasi::bisa('stok.view');
     }
 
     protected function getStats(): array
