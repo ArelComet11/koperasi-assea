@@ -25,8 +25,9 @@ class SuratRelationManager extends RelationManager
             TextColumn::make('kapal.nama_kapal')->label('Kapal'),
             TextColumn::make('berlaku_mulai')->date('d/m/Y')->label('Mulai'),
             TextColumn::make('berlaku_sampai')->date('d/m/Y')->label('Sampai'),
-            TextColumn::make('status_tampil')->label('Status')->badge()->formatStateUsing(fn ($s) => ucfirst($s))
-                ->color(fn ($s) => match ($s) { 'aktif' => 'success', 'kedaluwarsa' => 'danger', default => 'gray' }),
+            TextColumn::make('status_tampil')->label('Status')->badge()
+                ->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))
+                ->color(fn ($state) => match ($state) { 'aktif' => 'success', 'belum_berlaku' => 'info', 'kedaluwarsa' => 'danger', default => 'gray' }),
         ])->paginated([10, 25]);
     }
 }

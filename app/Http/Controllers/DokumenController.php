@@ -26,7 +26,7 @@ class DokumenController extends Controller
         $user = auth()->user();
         abort_unless($user->can('tagihan.view') || $user->hasRole('anggota'), 403);
 
-        $pembayaran->load(['tagihan.pengajuan.kapal', 'tagihan.anggota', 'penerima']);
+        $pembayaran->load(['tagihan.pengajuan.kapal', 'tagihan.pengajuan.penyaluran', 'tagihan.anggota', 'tagihan.penyesuaian', 'penerima']);
 
         return view('cetak.bukti', ['bayar' => $pembayaran]);
     }

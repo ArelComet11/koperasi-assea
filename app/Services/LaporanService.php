@@ -15,6 +15,7 @@ use App\Models\PenerimaanBbm;
 use App\Models\Pembayaran;
 use App\Models\PengajuanPembelian;
 use App\Models\PenyaluranBbm;
+use App\Models\PenyesuaianTagihan;
 use App\Models\SuratRekomendasi;
 use App\Models\Tagihan;
 use App\Models\User;
@@ -134,6 +135,12 @@ class LaporanService
         $q = SuratRekomendasi::query()->with(['anggota', 'kapal'])->orderBy('nomor_surat');
         if (! empty($f['anggota_id'])) $q->where('anggota_id', $f['anggota_id']);
         if (! empty($f['kapal_id'])) $q->where('kapal_id', $f['kapal_id']);
+        if (! empty($f['cari'])) {
+            $c = $f['cari'];
+            $q->where(fn ($w) => $w->where('nomor_surat', 'like', "%{$c}%")
+                ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%"))
+                ->orWhereHas('kapal', fn ($k) => $k->where('nama_kapal', 'like', "%{$c}%")));
+        }
         $data = $q->get();
         if (! empty($f['status'])) $data = $data->filter(fn ($s) => $s->status_tampil === $f['status'])->values();
 
@@ -149,17 +156,23 @@ class LaporanService
                 $sisa = $this->kuota->sisa($s);
 
                 return [$s->nomor_surat, $s->anggota?->nama_lengkap, $s->kapal?->nama_kapal, $s->berlaku_mulai->format('d/m/Y'), $s->berlaku_sampai->format('d/m/Y'),
-                    ucfirst($s->status_tampil), (float) $batas, (float) Dec::sub($batas, $sisa), (float) $sisa];
+                    ucfirst(str_replace('_', ' ', $s->status_tampil)), (float) $batas, (float) Dec::sub($batas, $sisa), (float) $sisa];
             })->all(),
         ];
     }
 
     private function penerimaan(array $f): array
     {
-        $q = PenerimaanBbm::query()->where('status', StatusPenerimaan::Terkonfirmasi->value)
+        $status = ! empty($f['status']) ? $f['status'] : StatusPenerimaan::Terkonfirmasi->value;
+        $q = PenerimaanBbm::query()->where('status', $status)
             ->whereDate('tanggal_penerimaan', '>=', $f['_dari']->toDateString())->whereDate('tanggal_penerimaan', '<=', $f['_sampai']->toDateString())
             ->orderBy('tanggal_penerimaan')->orderBy('id');
-        if (! empty($f['cari'])) $q->where('nama_pemasok', 'like', "%{$f['cari']}%");
+        if (! empty($f['cari'])) {
+            $c = $f['cari'];
+            $q->where(fn ($w) => $w->where('nama_pemasok', 'like', "%{$c}%")
+                ->orWhere('nomor_penerimaan', 'like', "%{$c}%")
+                ->orWhere('nomor_dokumen', 'like', "%{$c}%"));
+        }
         $data = $q->get();
 
         $ringkasan = ['Total penerimaan (liter)' => (float) $data->sum('liter')];
@@ -181,6 +194,13 @@ class LaporanService
             ->whereBetween('tanggal_penyaluran', [$f['_dari'], $f['_sampai']])->orderBy('tanggal_penyaluran');
         if (! empty($f['anggota_id'])) $q->whereHas('pengajuan', fn ($w) => $w->where('anggota_id', $f['anggota_id']));
         if (! empty($f['kapal_id'])) $q->whereHas('pengajuan', fn ($w) => $w->where('kapal_id', $f['kapal_id']));
+        if (! empty($f['cari'])) {
+            $c = $f['cari'];
+            $q->where(fn ($w) => $w->where('nomor_penyaluran', 'like', "%{$c}%")
+                ->orWhereHas('pengajuan', fn ($p) => $p->where('nomor_pengajuan', 'like', "%{$c}%")
+                    ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%"))
+                    ->orWhereHas('kapal', fn ($k) => $k->where('nama_kapal', 'like', "%{$c}%"))));
+        }
         $data = $q->get();
 
         return [
@@ -196,17 +216,15 @@ class LaporanService
         $dari = $f['_dari'];
         $sampai = $f['_sampai'];
 
-        $sebelum = MutasiStok::query()->where('tanggal', '<', $dari)->orderByDesc('tanggal')->orderByDesc('id')->first();
-        $akhir = MutasiStok::query()->where('tanggal', '<=', $sampai)->orderByDesc('tanggal')->orderByDesc('id')->first();
+        $awal = Dec::n(MutasiStok::query()->where('tanggal', '<', $dari)->sum('delta_fisik'));
         $dalam = MutasiStok::query()->whereBetween('tanggal', [$dari, $sampai]);
         $jumlah = fn (array $j) => Dec::n((clone $dalam)->whereIn('jenis', $j)->sum('delta_fisik'));
 
-        $awal = Dec::n($sebelum?->saldo_fisik);
         $terima = $jumlah([JenisMutasi::Penerimaan->value, JenisMutasi::PembatalanPenerimaan->value, JenisMutasi::SaldoAwal->value]);
         $salur = Dec::sub('0', $jumlah([JenisMutasi::Penyaluran->value]));
         $koreksi = $jumlah([JenisMutasi::Koreksi->value]);
-        $fisikAkhir = Dec::n($akhir?->saldo_fisik);
-        $alokasi = Dec::n($akhir?->saldo_alokasi);
+        $fisikAkhir = Dec::n(MutasiStok::query()->where('tanggal', '<=', $sampai)->sum('delta_fisik'));
+        $alokasi = Dec::n(MutasiStok::query()->where('tanggal', '<=', $sampai)->sum('delta_alokasi'));
 
         return [
             'headings' => ['Keterangan', 'Liter'],
@@ -229,6 +247,12 @@ class LaporanService
         if (! empty($f['anggota_id'])) $q->where('anggota_id', $f['anggota_id']);
         if (! empty($f['kapal_id'])) $q->where('kapal_id', $f['kapal_id']);
         if (! empty($f['status'])) $q->where('status', $f['status']);
+        if (! empty($f['cari'])) {
+            $c = $f['cari'];
+            $q->where(fn ($w) => $w->where('nomor_pengajuan', 'like', "%{$c}%")
+                ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%"))
+                ->orWhereHas('kapal', fn ($k) => $k->where('nama_kapal', 'like', "%{$c}%")));
+        }
         $data = $q->get();
 
         $selesai = $data->where('status', StatusPengajuan::Selesai);
@@ -247,24 +271,85 @@ class LaporanService
 
     private function keuangan(array $f): array
     {
-        $tagihan = Tagihan::query()->where('status', '!=', StatusTagihan::Dibatalkan->value)
-            ->whereDate('tanggal_tagihan', '>=', $f['_dari']->toDateString())->whereDate('tanggal_tagihan', '<=', $f['_sampai']->toDateString());
-        $bayar = Pembayaran::query()->where('status', StatusPembayaranCatatan::Sah->value)->whereBetween('tanggal_pembayaran', [$f['_dari'], $f['_sampai']]);
+        $dariTgl = $f['_dari']->toDateString();
+        $sampaiTgl = $f['_sampai']->toDateString();
+        $tagihan = Tagihan::query()->where('status', '!=', StatusTagihan::Dibatalkan->value);
+        if ($tagihan->getConnection()->getDriverName() === 'sqlite') {
+            $tagihan->whereDate('tanggal_tagihan', '>=', $dariTgl)->whereDate('tanggal_tagihan', '<=', $sampaiTgl);
+        } else {
+            $tagihan->where('tanggal_tagihan', '>=', $dariTgl)->where('tanggal_tagihan', '<=', $sampaiTgl);
+        }
 
-        $totalTagihan = Dec::n((clone $tagihan)->sum('total'));
-        $belumLunas = Dec::n((clone $tagihan)->where('status', StatusTagihan::BelumDibayar->value)->sum('total'));
-        $totalBayar = Dec::n((clone $bayar)->sum('jumlah'));
+        $bayar = Pembayaran::query()->where('pembayaran.status', StatusPembayaranCatatan::Sah->value)
+            ->whereBetween('pembayaran.tanggal_pembayaran', [$f['_dari'], $f['_sampai']]);
 
-        $harian = (clone $bayar)->selectRaw('DATE(tanggal_pembayaran) as hari, COUNT(*) as n, SUM(jumlah) as total')
-            ->groupBy(DB::raw('DATE(tanggal_pembayaran)'))->orderBy('hari')->get();
+        if (! empty($f['anggota_id'])) {
+            $tagihan->where('anggota_id', $f['anggota_id']);
+            $bayar->whereHas('tagihan', fn ($t) => $t->where('anggota_id', $f['anggota_id']));
+        }
+        if (! empty($f['kapal_id'])) {
+            $tagihan->whereHas('pengajuan', fn ($p) => $p->where('kapal_id', $f['kapal_id']));
+            $bayar->whereHas('tagihan.pengajuan', fn ($p) => $p->where('kapal_id', $f['kapal_id']));
+        }
+        if (! empty($f['status'])) {
+            $tagihan->where('status', $f['status']);
+            $bayar->whereHas('tagihan', fn ($t) => $t->where('status', $f['status']));
+        }
+        if (! empty($f['cari'])) {
+            $c = $f['cari'];
+            $tagihan->where(fn ($w) => $w->where('nomor_tagihan', 'like', "%{$c}%")
+                ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%")));
+            $bayar->where(fn ($w) => $w->where('nomor_pembayaran', 'like', "%{$c}%")
+                ->orWhereHas('tagihan', fn ($t) => $t->where('nomor_tagihan', 'like', "%{$c}%")
+                    ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%"))));
+        }
+
+        $ringkasanTagihan = (clone $tagihan)
+            ->selectRaw(
+                'COALESCE(SUM(total), 0) as total_tagihan, COALESCE(SUM(CASE WHEN status = ? THEN total ELSE 0 END), 0) as belum_lunas, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as transaksi_lunas',
+                [StatusTagihan::BelumDibayar->value, StatusTagihan::Lunas->value]
+            )
+            ->first();
+
+        $totalTagihan = Dec::n($ringkasanTagihan->total_tagihan ?? 0);
+        $belumLunas = Dec::n($ringkasanTagihan->belum_lunas ?? 0);
+        $transaksiLunas = (int) ($ringkasanTagihan->transaksi_lunas ?? 0);
+
+        $bayarAgg = (clone $bayar)
+            ->leftJoin('tagihan as t_ref', 't_ref.id', '=', 'pembayaran.tagihan_id')
+            ->selectRaw('COALESCE(SUM(pembayaran.jumlah), 0) as bruto, COALESCE(SUM(CASE WHEN t_ref.total IS NOT NULL AND pembayaran.jumlah > t_ref.total THEN pembayaran.jumlah - t_ref.total ELSE 0 END), 0) as refund_selesai')
+            ->first();
+
+        $totalBayar = Dec::n($bayarAgg->bruto ?? 0);
+        $refundSelesai = Dec::n($bayarAgg->refund_selesai ?? 0);
+
+        $harian = (clone $bayar)->selectRaw('DATE(pembayaran.tanggal_pembayaran) as hari, COUNT(*) as n, SUM(pembayaran.jumlah) as total')
+            ->groupBy(DB::raw('DATE(pembayaran.tanggal_pembayaran)'))->orderBy('hari')->get();
+
+        $ringkasan = [
+            'Total tagihan' => Format::rupiah($totalTagihan),
+            'Total pembayaran diterima' => Format::rupiah($totalBayar),
+            'Tagihan belum lunas' => Format::rupiah($belumLunas),
+            'Transaksi lunas' => $transaksiLunas,
+        ];
+
+        if (Dec::gt($refundSelesai, 0)) {
+            $ringkasan['Total refund selesai'] = Format::rupiah($refundSelesai);
+            $ringkasan['Pemasukan neto'] = Format::rupiah(Dec::max0(Dec::sub($totalBayar, $refundSelesai)));
+        }
+
+        $refundTertunda = Dec::n(
+            PenyesuaianTagihan::query()
+                ->where('diterapkan', false)
+                ->whereIn('tagihan_id', (clone $tagihan)->select('id'))
+                ->sum('selisih')
+        );
+        if (Dec::lt($refundTertunda, 0)) {
+            $ringkasan['Selisih pengembalian tertunda'] = Format::rupiah(Dec::sub('0', $refundTertunda));
+        }
 
         return [
-            'ringkasan' => [
-                'Total tagihan' => Format::rupiah($totalTagihan),
-                'Total pembayaran diterima' => Format::rupiah($totalBayar),
-                'Tagihan belum lunas' => Format::rupiah($belumLunas),
-                'Transaksi lunas' => (clone $tagihan)->where('status', StatusTagihan::Lunas->value)->count(),
-            ],
+            'ringkasan' => $ringkasan,
             'headings' => ['Tanggal', 'Jumlah Pembayaran', 'Pemasukan (Rp)'],
             'rows' => $harian->map(fn ($r) => [Carbon::parse($r->hari)->format('d/m/Y'), (int) $r->n, (float) $r->total])->all(),
         ];

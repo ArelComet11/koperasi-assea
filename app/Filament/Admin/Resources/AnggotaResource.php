@@ -9,6 +9,7 @@ use App\Filament\Concerns\Bisnis;
 use App\Filament\Concerns\DenganIzin;
 use App\Models\Anggota;
 use App\Services\AnggotaService;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -54,7 +55,8 @@ class AnggotaResource extends Resource
                     ->default(fn () => 'ANG-' . str_pad((string) ((Anggota::withTrashed()->max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT)),
                 TextInput::make('nama_lengkap')->required()->maxLength(150),
                 TextInput::make('telepon')->tel()->maxLength(30),
-                TextInput::make('email')->email()->maxLength(150),
+                TextInput::make('email')->email()->maxLength(150)
+                    ->unique(table: 'users', column: 'email', ignorable: fn (?Anggota $record) => $record?->user),
                 DatePicker::make('tanggal_bergabung')->default(today()),
                 Textarea::make('alamat')->columnSpanFull(),
                 Textarea::make('keterangan')->columnSpanFull(),
@@ -98,19 +100,19 @@ class AnggotaResource extends Resource
                 EditAction::make(),
                 ActionGroup::make([
                     Action::make('resetPassword')->label('Reset kata sandi')->icon('heroicon-o-key')
-                        ->visible(fn () => auth()->user()->can('anggota.reset_password'))
+                        ->visible(fn () => Otorisasi::bisa('anggota.reset_password'))
                         ->schema([TextInput::make('password')->label('Kata sandi baru')->password()->revealable()->required()->minLength(8)])
                         ->action(fn (Anggota $record, array $data) => Bisnis::jalankan(
-                            fn () => app(AnggotaService::class)->resetPassword($record, $data['password'], auth()->user()), 'Kata sandi berhasil diatur ulang.')),
+                            fn () => app(AnggotaService::class)->resetPassword($record, $data['password'], Otorisasi::userWajib()), 'Kata sandi berhasil diatur ulang.')),
                     Action::make('ubahStatus')
                         ->label(fn (Anggota $r) => $r->isAktif() ? 'Nonaktifkan akun' : 'Aktifkan akun')
                         ->icon(fn (Anggota $r) => $r->isAktif() ? 'heroicon-o-no-symbol' : 'heroicon-o-check-circle')
                         ->color(fn (Anggota $r) => $r->isAktif() ? 'danger' : 'success')
-                        ->visible(fn () => auth()->user()->can('anggota.nonaktif'))
+                        ->visible(fn () => Otorisasi::bisa('anggota.nonaktif'))
                         ->requiresConfirmation()
                         ->modalDescription('Anggota nonaktif tidak dapat login. Seluruh riwayat transaksi tetap tersimpan.')
                         ->action(fn (Anggota $record) => Bisnis::jalankan(
-                            fn () => app(AnggotaService::class)->setStatus($record, $record->isAktif() ? StatusAktif::Nonaktif : StatusAktif::Aktif, auth()->user()), 'Status anggota diperbarui.')),
+                            fn () => app(AnggotaService::class)->setStatus($record, $record->isAktif() ? StatusAktif::Nonaktif : StatusAktif::Aktif, Otorisasi::userWajib()), 'Status anggota diperbarui.')),
                 ]),
             ]);
     }

@@ -17,18 +17,23 @@ class AnggotaService
         Otorisasi::pastikan($oleh, 'anggota.create');
         $this->validasiPassword($data['password'] ?? '');
 
-        return DB::transaction(function () use ($data, $oleh) {
+        $email = isset($data['email']) && trim((string) $data['email']) !== '' ? trim((string) $data['email']) : null;
+        if ($email !== null && User::query()->where('email', $email)->exists()) {
+            throw new BisnisException('Alamat email sudah digunakan oleh akun lain.');
+        }
+
+        return DB::transaction(function () use ($data, $oleh, $email) {
             $user = new User();
             $user->forceFill([
                 'username' => $data['username'], 'name' => $data['nama_lengkap'],
-                'email' => $data['email'] ?: null, 'password' => $data['password'], 'is_active' => true,
+                'email' => $email, 'password' => $data['password'], 'is_active' => true,
             ])->save();
             $user->assignRole('anggota');
 
             $anggota = new Anggota();
             $anggota->fill([
                 'kode_anggota' => $data['kode_anggota'], 'nama_lengkap' => $data['nama_lengkap'],
-                'alamat' => $data['alamat'] ?? null, 'telepon' => $data['telepon'] ?? null, 'email' => $data['email'] ?: null,
+                'alamat' => $data['alamat'] ?? null, 'telepon' => $data['telepon'] ?? null, 'email' => $email,
                 'status' => StatusAktif::Aktif->value, 'tanggal_bergabung' => $data['tanggal_bergabung'] ?? today()->toDateString(),
                 'keterangan' => $data['keterangan'] ?? null,
             ]);
@@ -45,13 +50,21 @@ class AnggotaService
     {
         Otorisasi::pastikan($oleh, 'anggota.update');
 
-        return DB::transaction(function () use ($anggota, $data, $oleh) {
+        $email = array_key_exists('email', $data)
+            ? (trim((string) $data['email']) !== '' ? trim((string) $data['email']) : null)
+            : $anggota->email;
+        if ($email !== null && User::query()->where('email', $email)->whereKeyNot($anggota->user_id)->exists()) {
+            throw new BisnisException('Alamat email sudah digunakan oleh akun lain.');
+        }
+
+        return DB::transaction(function () use ($anggota, $data, $oleh, $email) {
             $lama = $anggota->only(['kode_anggota', 'nama_lengkap', 'alamat', 'telepon', 'email', 'keterangan']);
+            $data['email'] = $email;
             $anggota->fill(array_intersect_key($data, array_flip(['kode_anggota', 'nama_lengkap', 'alamat', 'telepon', 'email', 'tanggal_bergabung', 'keterangan'])))->save();
 
             $user = $anggota->user;
             $user->name = $anggota->nama_lengkap;
-            $user->email = $anggota->email ?: null;
+            $user->email = $email;
             if (! empty($data['username']) && $data['username'] !== $user->username) {
                 $user->username = $data['username'];
             }

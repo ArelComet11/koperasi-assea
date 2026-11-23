@@ -4,18 +4,21 @@ namespace App\Filament\Admin\Widgets;
 
 use App\Services\PasokanService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class PasokanStats extends StatsOverviewWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static bool $isDiscovered = false;
 
     protected int|string|array $columnSpan = 1;
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('penerimaan.view');
+        return Otorisasi::bisa('penerimaan.view');
     }
 
     protected function getHeading(): ?string

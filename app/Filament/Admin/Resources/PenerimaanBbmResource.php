@@ -9,12 +9,14 @@ use App\Filament\Concerns\DenganIzin;
 use App\Models\PenerimaanBbm;
 use App\Services\PenerimaanService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -53,9 +55,37 @@ class PenerimaanBbmResource extends Resource
                 Textarea::make('keterangan')->columnSpanFull(),
                 Toggle::make('override_pasokan')->label('Override batas pasokan bulanan')->live()
                     ->helperText('Hanya bila penerimaan melampaui batas bulanan. Memerlukan izin khusus dan akan tercatat di audit log.')
-                    ->visible(fn () => auth()->user()->can('pasokan.override')),
+                    ->visible(fn () => Otorisasi::bisa('pasokan.override')),
                 Textarea::make('alasan_override')->label('Alasan override')->visible(fn (Get $get) => (bool) $get('override_pasokan'))->required(fn (Get $get) => (bool) $get('override_pasokan'))->columnSpanFull(),
             ])->columns(2),
+        ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('Detail penerimaan BBM')->schema([
+                TextEntry::make('nomor_penerimaan')->label('No. penerimaan'),
+                TextEntry::make('status')->badge(),
+                TextEntry::make('tanggal_penerimaan')->label('Tanggal')->date('d F Y'),
+                TextEntry::make('nama_pemasok')->label('Pemasok / sumber'),
+                TextEntry::make('liter')->label('Jumlah diterima')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextEntry::make('harga_per_liter')->label('Harga per liter')->formatStateUsing(fn ($state) => $state === null ? '-' : Format::rupiah($state)),
+                TextEntry::make('total_nilai')->label('Total nilai')->formatStateUsing(fn ($state) => $state === null ? '-' : Format::rupiah($state)),
+                TextEntry::make('nomor_dokumen')->label('No. dokumen')->placeholder('-'),
+                TextEntry::make('pencatat.name')->label('Dicatat oleh')->placeholder('-'),
+                TextEntry::make('override_pasokan')->label('Override pasokan')->badge()
+                    ->formatStateUsing(fn ($state) => $state ? 'Ya' : 'Tidak')
+                    ->color(fn ($state) => $state ? 'warning' : 'gray'),
+                TextEntry::make('alasan_override')->label('Alasan override')->placeholder('-')
+                    ->visible(fn (?PenerimaanBbm $record) => (bool) $record?->override_pasokan)->columnSpan(2),
+                TextEntry::make('keterangan')->placeholder('-')->columnSpanFull(),
+            ])->columns(3),
+            Section::make('Informasi pembatalan')->schema([
+                TextEntry::make('dibatalkan_pada')->label('Waktu dibatalkan')->dateTime('d/m/Y H:i'),
+                TextEntry::make('pembatal.name')->label('Dibatalkan oleh')->placeholder('-'),
+                TextEntry::make('alasan_pembatalan')->label('Alasan pembatalan')->placeholder('-')->columnSpanFull(),
+            ])->columns(2)->visible(fn (?PenerimaanBbm $record) => $record?->status === StatusPenerimaan::Dibatalkan),
         ]);
     }
 
@@ -66,10 +96,10 @@ class PenerimaanBbmResource extends Resource
                 TextColumn::make('nomor_penerimaan')->label('No. penerimaan')->searchable()->sortable(),
                 TextColumn::make('tanggal_penerimaan')->label('Tanggal')->date('d/m/Y')->sortable(),
                 TextColumn::make('nama_pemasok')->label('Pemasok')->searchable(),
-                TextColumn::make('liter')->formatStateUsing(fn ($s) => Format::liter($s))->sortable(),
-                TextColumn::make('total_nilai')->label('Nilai')->formatStateUsing(fn ($s) => $s === null ? '-' : Format::rupiah($s))->toggleable(),
+                TextColumn::make('liter')->formatStateUsing(fn ($state) => Format::liter($state))->sortable(),
+                TextColumn::make('total_nilai')->label('Nilai')->formatStateUsing(fn ($state) => $state === null ? '-' : Format::rupiah($state))->toggleable(),
                 TextColumn::make('nomor_dokumen')->label('No. dokumen')->placeholder('-')->toggleable(),
-                TextColumn::make('override_pasokan')->label('Override')->badge()->formatStateUsing(fn ($s) => $s ? 'Ya' : '-')->color(fn ($s) => $s ? 'warning' : 'gray'),
+                TextColumn::make('override_pasokan')->label('Override')->badge()->formatStateUsing(fn ($state) => $state ? 'Ya' : '-')->color(fn ($state) => $state ? 'warning' : 'gray'),
                 TextColumn::make('pencatat.name')->label('Petugas')->toggleable(),
                 TextColumn::make('status')->badge(),
             ])
@@ -83,12 +113,12 @@ class PenerimaanBbmResource extends Resource
             ->recordActions([
                 ViewAction::make(),
                 Action::make('batalkan')->label('Batalkan')->icon('heroicon-o-x-circle')->color('danger')
-                    ->visible(fn (PenerimaanBbm $r) => $r->status === StatusPenerimaan::Terkonfirmasi && auth()->user()->can('penerimaan.manage'))
+                    ->visible(fn (PenerimaanBbm $r) => $r->status === StatusPenerimaan::Terkonfirmasi && Otorisasi::bisa('penerimaan.manage'))
                     ->modalHeading('Batalkan penerimaan')
                     ->modalDescription('Stok fisik dikurangi melalui entri pembalik di ledger. Gunakan untuk koreksi, lalu catat penerimaan yang benar.')
                     ->schema([Textarea::make('alasan')->required()->minLength(3)->maxLength(1000)])
                     ->action(fn (PenerimaanBbm $record, array $data) => Bisnis::jalankan(
-                        fn () => app(PenerimaanService::class)->batalkan($record, auth()->user(), $data['alasan']), 'Penerimaan dibatalkan.')),
+                        fn () => app(PenerimaanService::class)->batalkan($record, Otorisasi::userWajib(), $data['alasan']), 'Penerimaan dibatalkan.')),
             ]);
     }
 

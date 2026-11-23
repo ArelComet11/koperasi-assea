@@ -9,6 +9,7 @@ use App\Filament\Concerns\DenganIzin;
 use App\Models\Pembayaran;
 use App\Services\PembayaranService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
@@ -40,7 +41,7 @@ class PembayaranResource extends Resource
                 TextColumn::make('tanggal_pembayaran')->label('Tanggal')->dateTime('d/m/Y H:i')->sortable(),
                 TextColumn::make('tagihan.anggota.nama_lengkap')->label('Anggota')->searchable(),
                 TextColumn::make('tagihan.nomor_tagihan')->label('No. tagihan')->searchable(),
-                TextColumn::make('jumlah')->formatStateUsing(fn ($s) => Format::rupiah($s))->sortable(),
+                TextColumn::make('jumlah')->formatStateUsing(fn ($state) => Format::rupiah($state))->sortable(),
                 TextColumn::make('metode')->badge(),
                 TextColumn::make('nomor_bukti')->label('No. bukti')->placeholder('-')->toggleable(),
                 TextColumn::make('penerima.name')->label('Penerima')->toggleable(),
@@ -52,12 +53,12 @@ class PembayaranResource extends Resource
                 Action::make('cetak')->label('Cetak bukti')->icon('heroicon-o-printer')
                     ->url(fn (Pembayaran $r) => route('cetak.pembayaran', $r))->openUrlInNewTab(),
                 Action::make('batalkan')->label('Batalkan')->icon('heroicon-o-x-circle')->color('danger')
-                    ->visible(fn (Pembayaran $r) => $r->status === StatusPembayaranCatatan::Sah && auth()->user()->can('pembayaran.cancel'))
+                    ->visible(fn (Pembayaran $r) => $r->status === StatusPembayaranCatatan::Sah && Otorisasi::bisa('pembayaran.cancel'))
                     ->modalHeading('Batalkan pembayaran')
                     ->modalDescription('Tagihan kembali berstatus belum dibayar. Tidak dapat dilakukan bila BBM sudah disalurkan.')
                     ->schema([Textarea::make('alasan')->required()->minLength(3)->maxLength(1000)])
                     ->action(fn (Pembayaran $record, array $data) => Bisnis::jalankan(
-                        fn () => app(PembayaranService::class)->batalkan($record, auth()->user(), $data['alasan']), 'Pembayaran dibatalkan.')),
+                        fn () => app(PembayaranService::class)->batalkan($record, Otorisasi::userWajib(), $data['alasan']), 'Pembayaran dibatalkan.')),
             ]);
     }
 

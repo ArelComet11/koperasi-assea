@@ -68,7 +68,8 @@ class PenerimaanService
             ]);
 
             $this->pasokan->tambahPenerimaan($pas, $liter, $melebihi && $override);
-            $this->stok->catat(JenisMutasi::Penerimaan, $liter, '0', $p, 'Penerimaan ' . $p->nomor_penerimaan, $user);
+            $waktuMutasi = $tanggal->isSameDay(today()) ? now() : $tanggal->copy()->setTimeFrom(now());
+            $this->stok->catat(JenisMutasi::Penerimaan, $liter, '0', $p, 'Penerimaan ' . $p->nomor_penerimaan, $user, $waktuMutasi);
 
             AuditService::catat('penerimaan.dicatat', $p, null, [
                 'liter' => $liter, 'pemasok' => $p->nama_pemasok, 'override' => $p->override_pasokan,

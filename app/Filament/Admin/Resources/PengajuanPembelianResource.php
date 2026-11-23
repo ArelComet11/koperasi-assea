@@ -10,7 +10,10 @@ use App\Filament\Admin\Resources\PengajuanPembelianResource\Pages;
 use App\Filament\Admin\Resources\PengajuanPembelianResource\RelationManagers;
 use App\Filament\Concerns\DenganIzin;
 use App\Models\PengajuanPembelian;
+use App\Support\Dec;
 use App\Support\Format;
+use App\Support\LencanaCache;
+use App\Support\Otorisasi;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
@@ -41,20 +44,29 @@ class PengajuanPembelianResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $n = PengajuanPembelian::query()->where('status', StatusPengajuan::MenungguPersetujuan->value)->count();
+        if (! Otorisasi::bisa('pengajuan.approve')) {
+            return null;
+        }
+
+        $n = LencanaCache::semua()['pengajuan'];
 
         return $n > 0 ? (string) $n : null;
     }
 
-    public static function getNavigationBadgeColor(): ?string
+    public static function getNavigationBadgeColor(): string|array|null
     {
         return 'warning';
     }
 
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Pengajuan menunggu persetujuan';
+    }
+
     public static function infolist(Schema $schema): Schema
     {
-        $liter = fn ($s) => Format::liter($s);
-        $rp = fn ($s) => $s === null ? '-' : Format::rupiah($s);
+        $liter = fn ($state) => Format::liter($state);
+        $rp = fn ($state) => $state === null ? '-' : Format::rupiah($state);
 
         return $schema->components([
             Section::make('Pengajuan')->schema([
@@ -84,6 +96,13 @@ class PengajuanPembelianResource extends Resource
                 TextEntry::make('selesai_pada')->dateTime('d/m/Y H:i')->placeholder('-'),
                 TextEntry::make('alasan_penolakan')->placeholder('-')->visible(fn ($record) => $record?->alasan_penolakan !== null),
                 TextEntry::make('alasan_pembatalan')->placeholder('-')->visible(fn ($record) => $record?->alasan_pembatalan !== null),
+                TextEntry::make('refund_tertunda')->label('Koreksi kelebihan bayar')->badge()->color('danger')
+                    ->state(function (?PengajuanPembelian $record): ?string {
+                        $selisih = $record?->tagihan?->penyesuaian()->where('diterapkan', false)->sum('selisih');
+
+                        return Dec::lt($selisih, 0) ? 'Perlu pengembalian ' . Format::rupiah(Dec::sub('0', $selisih)) : null;
+                    })
+                    ->visible(fn (?PengajuanPembelian $record) => (bool) $record?->tagihan?->penyesuaian()->where('diterapkan', false)->exists()),
             ])->columns(3),
         ]);
     }
@@ -97,9 +116,9 @@ class PengajuanPembelianResource extends Resource
                 TextColumn::make('anggota.nama_lengkap')->label('Anggota')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
                 TextColumn::make('suratRekomendasi.nomor_surat')->label('Surat')->toggleable(),
-                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s))->sortable(),
-                TextColumn::make('harga')->label('Harga/L')->state(fn ($r) => Format::rupiah($r->harga_per_liter ?? $r->harga_estimasi_per_liter))->toggleable(),
-                TextColumn::make('total')->label('Total')->state(fn ($r) => Format::rupiah($r->total_tagihan ?? $r->total_estimasi)),
+                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state))->sortable(),
+                TextColumn::make('harga')->label('Harga/L')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->harga_per_liter ?? $record->harga_estimasi_per_liter))->toggleable(),
+                TextColumn::make('total')->label('Total')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->total_tagihan ?? $record->total_estimasi)),
                 TextColumn::make('tanggal_rencana')->label('Rencana')->date('d/m/Y')->sortable(),
                 TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
             ])

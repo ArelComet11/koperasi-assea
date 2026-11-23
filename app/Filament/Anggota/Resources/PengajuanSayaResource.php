@@ -13,6 +13,7 @@ use App\Services\KuotaService;
 use App\Services\PengajuanService;
 use App\Support\Dec;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -43,21 +44,29 @@ class PengajuanSayaResource extends Resource
     protected static ?int $navigationSort = 5;
     protected static ?string $recordTitleAttribute = 'nomor_pengajuan';
 
-    public static function canViewAny(): bool { return (bool) auth()->user()?->hasRole('anggota'); }
+    public static function canViewAny(): bool { return (bool) Otorisasi::user()?->hasRole('anggota'); }
     public static function canView(Model $record): bool { return static::canViewAny(); }
-    public static function canCreate(): bool { return static::canViewAny() && (bool) auth()->user()->can('pengajuan.create'); }
+    public static function canCreate(): bool { return static::canViewAny() && Otorisasi::bisa('pengajuan.create'); }
     public static function canEdit(Model $record): bool { return false; }
     public static function canDelete(Model $record): bool { return false; }
     public static function canDeleteAny(): bool { return false; }
 
     public static function getNavigationItems(): array
     {
+        $induk = array_map(
+            fn (NavigationItem $item) => $item->isActiveWhen(
+                fn () => request()->routeIs(static::getRouteBaseName() . '.*')
+                    && ! request()->routeIs(static::getRouteBaseName() . '.create')
+            ),
+            parent::getNavigationItems(),
+        );
+
         return [
             NavigationItem::make('Ajukan Pembelian BBM')->icon('heroicon-o-plus-circle')->sort(4)
                 ->visible(fn () => static::canCreate())
                 ->url(static::getUrl('create'))
                 ->isActiveWhen(fn () => request()->routeIs(static::getRouteBaseName() . '.create')),
-            ...parent::getNavigationItems(),
+            ...$induk,
         ];
     }
 
@@ -67,22 +76,31 @@ class PengajuanSayaResource extends Resource
 
         return $schema->components([
             Section::make('Form pengajuan pembelian BBM')->description('Harga ditetapkan koperasi dan tidak dapat diubah. Jumlah dibatasi sisa kuota surat rekomendasi, stok, dan batas pasokan bulanan.')->schema([
-                TextInput::make('nama')->label('Nama anggota')->default(fn () => auth()->user()->anggota?->nama_lengkap)->disabled()->dehydrated(false),
+                TextInput::make('nama')->label('Nama anggota')->default(fn () => Otorisasi::user()?->anggota?->nama_lengkap)->disabled()->dehydrated(false),
                 Select::make('kapal_id')->label('Kapal')->required()->live()
                     ->options(fn () => Kapal::query()->where('status', 'aktif')->orderBy('nama_kapal')->pluck('nama_kapal', 'id'))
+                    ->helperText(fn () => Kapal::query()->where('status', 'aktif')->exists() ? null : 'Belum ada kapal aktif terdaftar. Hubungi admin koperasi untuk mendaftarkan kapal.')
                     ->afterStateUpdated(fn (Set $set) => $set('surat_rekomendasi_id', null)),
                 Select::make('surat_rekomendasi_id')->label('Surat rekomendasi')->required()->live()
                     ->options(fn (Get $get) => SuratRekomendasi::query()->where('kapal_id', $get('kapal_id') ?: 0)->where('status', 'aktif')
                         ->whereDate('berlaku_mulai', '<=', today())->whereDate('berlaku_sampai', '>=', today())->pluck('nomor_surat', 'id'))
                     ->helperText(function (Get $get) {
+                        if (! $get('kapal_id')) {
+                            return 'Pilih kapal terlebih dahulu, lalu surat rekomendasi yang berlaku.';
+                        }
+                        $adaSurat = SuratRekomendasi::query()->where('kapal_id', $get('kapal_id'))->where('status', 'aktif')
+                            ->whereDate('berlaku_mulai', '<=', today())->whereDate('berlaku_sampai', '>=', today())->exists();
+                        if (! $adaSurat) {
+                            return 'Belum ada surat rekomendasi aktif untuk kapal ini. Hubungi admin koperasi.';
+                        }
                         $s = $get('surat_rekomendasi_id') ? SuratRekomendasi::query()->find($get('surat_rekomendasi_id')) : null;
 
-                        return $s ? 'Sisa kuota bulan ini: ' . Format::liter(app(KuotaService::class)->sisa($s)) : 'Pilih kapal, lalu surat rekomendasi yang berlaku.';
+                        return $s ? 'Sisa kuota bulan ini: ' . Format::liter(app(KuotaService::class)->sisa($s)) : 'Pilih surat rekomendasi yang berlaku.';
                     }),
                 TextInput::make('liter_diminta')->label('Jumlah BBM yang diminta')->numeric()->required()->minValue(1)->suffix('liter')->live(onBlur: true)
                     ->afterStateUpdated(function (Get $get, Set $set) use ($harga) {
                         $l = $get('liter_diminta');
-                        $set('total_tampil', Format::rupiah(is_numeric($l) ? Dec::mul($l, $harga()) : 0));
+                        $set('total_tampil', Format::rupiah(is_numeric($l) && Dec::gt($l, 0) ? Dec::mul($l, $harga()) : 0));
                     }),
                 TextInput::make('harga_tampil')->label('Harga per liter')->default(fn () => Format::rupiah($harga()))->disabled()->dehydrated(false),
                 TextInput::make('total_tampil')->label('Total estimasi pembayaran')->default('Rp0')->disabled()->dehydrated(false),
@@ -94,7 +112,7 @@ class PengajuanSayaResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        $rp = fn ($s) => $s === null ? '-' : Format::rupiah($s);
+        $rp = fn ($v) => $v === null ? '-' : Format::rupiah($v);
 
         return $schema->components([
             Section::make('Pengajuan')->schema([
@@ -104,11 +122,20 @@ class PengajuanSayaResource extends Resource
                 TextEntry::make('kapal.nama_kapal')->label('Kapal'),
                 TextEntry::make('suratRekomendasi.nomor_surat')->label('Surat rekomendasi'),
                 TextEntry::make('tanggal_rencana')->label('Rencana pembelian')->date('d/m/Y')->placeholder('-'),
-                TextEntry::make('liter_diminta')->label('Jumlah diminta')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextEntry::make('harga')->label('Harga per liter')->state(fn ($r) => $rp($r->harga_per_liter ?? $r->harga_estimasi_per_liter)),
-                TextEntry::make('total')->label('Total')->state(fn ($r) => $rp($r->total_tagihan ?? $r->total_estimasi)),
+                TextEntry::make('liter_diminta')->label('Jumlah diminta')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextEntry::make('penyaluran.liter_aktual')->label('Disalurkan (aktual)')->formatStateUsing(fn ($state) => Format::liter($state))->placeholder('-'),
+                TextEntry::make('tagihan.nomor_tagihan')->label('No. tagihan')->placeholder('-'),
+                TextEntry::make('harga')->label('Harga per liter')->state(fn (PengajuanPembelian $record) => $rp($record->harga_per_liter ?? $record->harga_estimasi_per_liter)),
+                TextEntry::make('total')->label('Total')->state(fn (PengajuanPembelian $record) => $rp($record->total_tagihan ?? $record->total_estimasi)),
                 TextEntry::make('status_pembayaran')->label('Pembayaran')->badge(),
                 TextEntry::make('status_penyaluran')->label('Penyaluran')->badge(),
+                TextEntry::make('refund_tertunda')->label('Koreksi kelebihan bayar')->badge()->color('warning')
+                    ->state(function (?PengajuanPembelian $record): ?string {
+                        $selisih = $record?->tagihan?->penyesuaian()->where('diterapkan', false)->sum('selisih');
+
+                        return Dec::lt($selisih, 0) ? 'Menunggu pengembalian ' . Format::rupiah(Dec::sub('0', $selisih)) : null;
+                    })
+                    ->visible(fn (?PengajuanPembelian $record) => (bool) $record?->tagihan?->penyesuaian()->where('diterapkan', false)->exists()),
                 TextEntry::make('catatan')->placeholder('-'),
                 TextEntry::make('alasan_penolakan')->label('Alasan penolakan')->visible(fn ($record) => $record?->alasan_penolakan !== null)->columnSpanFull(),
                 TextEntry::make('alasan_pembatalan')->label('Alasan pembatalan')->visible(fn ($record) => $record?->alasan_pembatalan !== null)->columnSpanFull(),
@@ -116,7 +143,7 @@ class PengajuanSayaResource extends Resource
             Section::make('Riwayat status')->schema([
                 RepeatableEntry::make('riwayat')->label('')->schema([
                     TextEntry::make('created_at')->label('Waktu')->dateTime('d/m/Y H:i'),
-                    TextEntry::make('ke_status')->label('Status')->formatStateUsing(fn ($s) => ucfirst(str_replace('_', ' ', $s)))->badge(),
+                    TextEntry::make('ke_status')->label('Status')->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))->badge(),
                     TextEntry::make('alasan')->placeholder('-'),
                 ])->columns(3),
             ])->collapsible(),
@@ -130,7 +157,7 @@ class PengajuanSayaResource extends Resource
             ->modalDescription('Pengajuan hanya dapat dibatalkan selama belum diproses admin.')
             ->schema([Textarea::make('alasan')->label('Alasan (opsional)')->maxLength(500)])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkanOlehAnggota($record, auth()->user()->anggota, $data['alasan'] ?? null), 'Pengajuan dibatalkan.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkanOlehAnggota($record, Otorisasi::userWajib()->anggota, $data['alasan'] ?? null), 'Pengajuan dibatalkan.');
                 $record->refresh();
             });
     }
@@ -142,8 +169,8 @@ class PengajuanSayaResource extends Resource
                 TextColumn::make('nomor_pengajuan')->label('No. pengajuan')->searchable()->sortable(),
                 TextColumn::make('created_at')->label('Diajukan')->dateTime('d/m/Y H:i')->sortable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
-                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextColumn::make('total')->label('Total')->state(fn ($r) => Format::rupiah($r->total_tagihan ?? $r->total_estimasi)),
+                TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextColumn::make('total')->label('Total')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->total_tagihan ?? $record->total_estimasi)),
                 TextColumn::make('tanggal_rencana')->label('Rencana')->date('d/m/Y'),
                 TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
             ])

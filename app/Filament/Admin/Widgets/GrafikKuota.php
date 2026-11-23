@@ -3,15 +3,18 @@
 namespace App\Filament\Admin\Widgets;
 
 use App\Models\KuotaRekomendasiBulanan;
+use App\Support\Otorisasi;
 use Filament\Widgets\ChartWidget;
 
 class GrafikKuota extends ChartWidget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected ?string $maxHeight = '260px';
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->can('surat.view');
+        return Otorisasi::bisa('surat.view');
     }
 
     public function getHeading(): ?string

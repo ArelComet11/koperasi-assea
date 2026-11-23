@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\Otorisasi;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -14,7 +15,7 @@ trait HanyaMilikAnggota
     public static function bootHanyaMilikAnggota(): void
     {
         static::addGlobalScope('milik_anggota', function (Builder $query) {
-            $user = auth()->user();
+            $user = Otorisasi::user();
             if ($user && $user->hasRole('anggota')) {
                 static::batasiKeAnggota($query, (int) $user->anggota?->id);
             }

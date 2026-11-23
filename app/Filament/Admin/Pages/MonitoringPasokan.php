@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Filament\Admin\Widgets\PasokanChart;
 use App\Filament\Admin\Widgets\PasokanStats;
+use App\Support\Otorisasi;
 use Filament\Pages\Page;
 
 class MonitoringPasokan extends Page
@@ -19,7 +20,7 @@ class MonitoringPasokan extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) auth()->user()?->can('penerimaan.view');
+        return Otorisasi::bisa('penerimaan.view');
     }
 
     protected function getHeaderWidgets(): array

@@ -27,4 +27,6 @@ class PenerimaanBbm extends Model
     }
 
     public function pencatat(): BelongsTo { return $this->belongsTo(User::class, 'dicatat_oleh'); }
+    public function pembatal(): BelongsTo { return $this->belongsTo(User::class, 'dibatalkan_oleh'); }
+    public function penyetujuOverride(): BelongsTo { return $this->belongsTo(User::class, 'override_oleh'); }
 }

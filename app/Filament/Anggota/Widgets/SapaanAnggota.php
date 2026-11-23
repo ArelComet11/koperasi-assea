@@ -2,10 +2,13 @@
 
 namespace App\Filament\Anggota\Widgets;
 
+use App\Support\Otorisasi;
 use Filament\Widgets\Widget;
 
 class SapaanAnggota extends Widget
 {
+    protected static ?bool $isLazyLoaded = false;
+
     protected static ?int $sort = -3;
 
     protected int|string|array $columnSpan = 'full';
@@ -14,13 +17,14 @@ class SapaanAnggota extends Widget
 
     public static function canView(): bool
     {
-        return (bool) auth()->user()?->hasRole('anggota');
+        return (bool) Otorisasi::user()?->hasRole('anggota');
     }
 
     protected function getViewData(): array
     {
-        $a = auth()->user()->anggota;
+        $user = Otorisasi::userWajib();
+        $a = $user->anggota;
 
-        return ['nama' => $a?->nama_lengkap ?? auth()->user()->name, 'kode' => $a?->kode_anggota ?? '-'];
+        return ['nama' => $a?->nama_lengkap ?? $user->name, 'kode' => $a?->kode_anggota ?? '-'];
     }
 }

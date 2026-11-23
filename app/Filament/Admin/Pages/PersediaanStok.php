@@ -8,10 +8,10 @@ use App\Filament\Concerns\Bisnis;
 use App\Models\MutasiStok;
 use App\Enums\JenisMutasi;
 use App\Services\StokService;
+use App\Support\Otorisasi;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\DB;
 
 class PersediaanStok extends Page
 {
@@ -26,7 +26,7 @@ class PersediaanStok extends Page
 
     public static function canAccess(): bool
     {
-        return (bool) auth()->user()?->can('stok.view');
+        return Otorisasi::bisa('stok.view');
     }
 
     protected function getHeaderWidgets(): array
@@ -38,11 +38,11 @@ class PersediaanStok extends Page
     {
         return [
             Action::make('saldoAwal')->label('Isi saldo awal')->icon('heroicon-o-plus-circle')
-                ->visible(fn () => auth()->user()->can('stok.saldo_awal') && ! MutasiStok::query()->where('jenis', JenisMutasi::SaldoAwal->value)->exists())
+                ->visible(fn () => Otorisasi::bisa('stok.saldo_awal') && ! MutasiStok::query()->where('jenis', JenisMutasi::SaldoAwal->value)->exists())
                 ->modalHeading('Saldo awal stok')
                 ->modalDescription('Dicatat satu kali saat sistem mulai dipakai dan tidak dapat diubah. Isi dengan stok fisik BBM saat ini.')
                 ->schema([TextInput::make('liter')->label('Stok fisik awal (liter)')->numeric()->required()->minValue(0.01)])
-                ->action(fn (array $data) => Bisnis::jalankan(fn () => app(StokService::class)->saldoAwal($data['liter'], auth()->user()), 'Saldo awal dicatat.')),
+                ->action(fn (array $data) => Bisnis::jalankan(fn () => app(StokService::class)->saldoAwal($data['liter'], Otorisasi::userWajib()), 'Saldo awal dicatat.')),
         ];
     }
 

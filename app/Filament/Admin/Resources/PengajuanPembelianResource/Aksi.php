@@ -13,6 +13,7 @@ use App\Services\PengajuanService;
 use App\Services\PenyaluranService;
 use App\Services\StokService;
 use App\Support\Format;
+use App\Support\Otorisasi;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -29,7 +30,7 @@ class Aksi
 
     private static function bisa(string $izin): bool
     {
-        return (bool) auth()->user()?->can($izin);
+        return Otorisasi::bisa($izin);
     }
 
     public static function setujui(): Action
@@ -47,7 +48,7 @@ class Aksi
                 );
             })
             ->action(function (PengajuanPembelian $record) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->setujui($record, auth()->user()), 'Pengajuan disetujui. Stok dialokasikan dan tagihan dibuat.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->setujui($record, Otorisasi::userWajib()), 'Pengajuan disetujui. Stok dialokasikan dan tagihan dibuat.');
                 $record->refresh();
             });
     }
@@ -59,7 +60,7 @@ class Aksi
             ->modalHeading('Tolak pengajuan')
             ->schema([Textarea::make('alasan')->label('Alasan penolakan')->required()->minLength(3)->maxLength(1000)])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->tolak($record, auth()->user(), $data['alasan']), 'Pengajuan ditolak.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->tolak($record, Otorisasi::userWajib(), $data['alasan']), 'Pengajuan ditolak.');
                 $record->refresh();
             });
     }
@@ -75,7 +76,7 @@ class Aksi
                 Textarea::make('keterangan')->maxLength(500),
             ])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(JadwalService::class)->buat($record, $data['tanggal_waktu'], $data['keterangan'] ?? null, auth()->user()), 'Jadwal dibuat.');
+                Bisnis::jalankan(fn () => app(JadwalService::class)->buat($record, $data['tanggal_waktu'], $data['keterangan'] ?? null, Otorisasi::userWajib()), 'Jadwal dibuat.');
             });
     }
 
@@ -92,7 +93,7 @@ class Aksi
                 Textarea::make('keterangan')->maxLength(500),
             ])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(PenyaluranService::class)->catat($record, $data['liter_aktual'], auth()->user(), Carbon::parse($data['tanggal']), $data['keterangan'] ?? null), 'Penyaluran dicatat. Stok fisik dan kuota diperbarui.');
+                Bisnis::jalankan(fn () => app(PenyaluranService::class)->catat($record, $data['liter_aktual'], Otorisasi::userWajib(), Carbon::parse($data['tanggal']), $data['keterangan'] ?? null), 'Penyaluran dicatat. Stok fisik dan kuota diperbarui.');
                 $record->refresh();
             });
     }
@@ -105,7 +106,7 @@ class Aksi
             ->modalDescription('Alokasi stok dan kuota akan dilepas. Stok fisik tidak berubah karena BBM belum keluar.')
             ->schema([Textarea::make('alasan')->label('Alasan pembatalan')->required()->minLength(3)->maxLength(1000)])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkan($record, auth()->user(), $data['alasan']), 'Pengajuan dibatalkan dan alokasi dilepas.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkan($record, Otorisasi::userWajib(), $data['alasan']), 'Pengajuan dibatalkan dan alokasi dilepas.');
                 $record->refresh();
             });
     }

@@ -23,7 +23,7 @@ class JadwalPembelian extends Model
 
     protected static function batasiKeAnggota(Builder $query, int $anggotaId): void
     {
-        $query->whereHas('pengajuan', fn (Builder $q) => $q->where('anggota_id', $anggotaId));
+        $query->whereHas('pengajuan', fn (Builder $q) => $q->withoutGlobalScope('milik_anggota')->where('anggota_id', $anggotaId));
     }
 
     public function pengajuan(): BelongsTo { return $this->belongsTo(PengajuanPembelian::class, 'pengajuan_id'); }

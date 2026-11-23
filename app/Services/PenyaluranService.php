@@ -84,9 +84,10 @@ class PenyaluranService
             $this->kuota->realisasi($kuota, $disetujui, $aktual);
             $this->pasokan->realisasi($pas, $disetujui, $aktual);
 
-            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), Dec::sub('0', $aktual), $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas);
+            $waktuPenyaluran = $tanggal ?? now();
+            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), Dec::sub('0', $aktual), $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
             if (Dec::gt($sisa, 0)) {
-                $this->stok->catat(JenisMutasi::LepasAlokasi, '0', Dec::sub('0', $sisa), $alokasi, 'Sisa alokasi dilepas ' . $p->nomor_pengajuan, $petugas);
+                $this->stok->catat(JenisMutasi::LepasAlokasi, '0', Dec::sub('0', $sisa), $alokasi, 'Sisa alokasi dilepas ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
                 $this->sesuaikanTagihan($p, $tagihan, $aktual, $petugas);
             }
 
@@ -100,7 +101,7 @@ class PenyaluranService
                 'pengajuan' => $p->nomor_pengajuan, 'disetujui' => $disetujui, 'aktual' => $aktual,
             ], $penyaluran->nomor_penyaluran, $petugas);
 
-            $this->pengajuanService->selesaikanJikaLengkap($p);
+            $this->pengajuanService->selesaikanJikaLengkap($p, $petugas);
 
             return $penyaluran;
         });

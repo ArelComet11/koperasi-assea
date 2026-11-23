@@ -23,9 +23,9 @@ class KuotaBulananRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('periode')->date('F Y')->sortable(),
-                TextColumn::make('batas_liter')->label('Batas')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextColumn::make('liter_terpakai')->label('Terpakai (aktual)')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextColumn::make('liter_dialokasikan')->label('Alokasi aktif')->formatStateUsing(fn ($s) => Format::liter($s)),
+                TextColumn::make('batas_liter')->label('Batas')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextColumn::make('liter_terpakai')->label('Terpakai (aktual)')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextColumn::make('liter_dialokasikan')->label('Alokasi aktif')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('sisa')->label('Sisa')->state(fn ($record) => Format::liter($record->sisa)),
             ])
             ->defaultSort('periode', 'desc');

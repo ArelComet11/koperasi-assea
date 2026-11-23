@@ -49,8 +49,11 @@ class KuotaService
     /** Sisa kuota tanpa kunci (validasi awal / tampilan). Sisa = batas - terpakai - alokasi aktif. */
     public function sisa(SuratRekomendasi $surat, ?CarbonInterface $periode = null): string
     {
-        $row = KuotaRekomendasiBulanan::query()->withoutGlobalScopes()
-            ->where('surat_rekomendasi_id', $surat->id)->where('periode', $this->periode($periode)->toDateString())->first();
+        $p = $this->periode($periode)->toDateString();
+        $row = ($p === now()->startOfMonth()->toDateString() && $surat->relationLoaded('kuotaBulanIni'))
+            ? $surat->kuotaBulanIni
+            : KuotaRekomendasiBulanan::query()->withoutGlobalScopes()
+                ->where('surat_rekomendasi_id', $surat->id)->where('periode', $p)->first();
 
         if (! $row) {
             return $this->batas($surat);
@@ -80,5 +83,36 @@ class KuotaService
             'liter_dialokasikan' => Dec::max0(Dec::sub($row->liter_dialokasikan, $disetujui)),
             'liter_terpakai' => Dec::add($row->liter_terpakai, $aktual),
         ])->save();
+    }
+
+    /** Batas baru berlaku untuk bulan berjalan dan seterusnya, selama tidak di bawah pemakaian + alokasi yang sudah ada. */
+    public function terapkanBatasBaru(?SuratRekomendasi $surat = null): void
+    {
+        $periode = $this->periode()->toDateString();
+
+        if ($surat) {
+            $batas = $this->batas($surat);
+            KuotaRekomendasiBulanan::query()->withoutGlobalScopes()
+                ->where('surat_rekomendasi_id', $surat->id)
+                ->where('periode', '>=', $periode)
+                ->whereRaw('(liter_dialokasikan + liter_terpakai) <= ?', [$batas])
+                ->update(['batas_liter' => $batas]);
+
+            return;
+        }
+
+        KuotaRekomendasiBulanan::query()->withoutGlobalScopes()
+            ->with('suratRekomendasi')
+            ->where('periode', '>=', $periode)
+            ->get()
+            ->each(function (KuotaRekomendasiBulanan $row): void {
+                if (! $row->suratRekomendasi) {
+                    return;
+                }
+                $batas = $this->batas($row->suratRekomendasi);
+                if (Dec::lte(Dec::add($row->liter_dialokasikan, $row->liter_terpakai), $batas)) {
+                    $row->forceFill(['batas_liter' => $batas])->save();
+                }
+            });
     }
 }

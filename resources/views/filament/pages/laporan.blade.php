@@ -2,7 +2,8 @@
     <style>
         .lp-form{display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem}
         .lp-form label{display:block;font-size:.75rem;font-weight:600;margin-bottom:.2rem;opacity:.8}
-        .lp-in{border:1px solid rgba(128,128,128,.4);border-radius:.5rem;padding:.45rem .65rem;background:transparent;color:inherit;font-size:.875rem;min-width:9rem}
+        .lp-in{border:1px solid rgba(128,128,128,.4);border-radius:.5rem;padding:.45rem .65rem;background:transparent;color:inherit;font-size:.875rem;min-width:9rem;color-scheme:light dark}
+        .dark .lp-in,.dark .lp-in option{background-color:#18181b;color:#f4f4f5}
         .lp-btn{background:#078B4B;color:#fff;border:0;border-radius:.5rem;padding:.5rem 1rem;font-weight:600;font-size:.875rem;cursor:pointer;text-decoration:none;display:inline-block}
         .lp-btn.alt{background:transparent;color:#078B4B;border:1px solid #078B4B}
         .lp-wrap{overflow-x:auto;border:1px solid rgba(128,128,128,.25);border-radius:.75rem;margin-top:.75rem}
@@ -14,28 +15,37 @@
 
     <form method="GET" class="lp-form">
         <div><label for="jenis">Jenis laporan</label>
-            <select class="lp-in" id="jenis" name="jenis">
+            <select class="lp-in" id="jenis" name="jenis" onchange="if(this.form.status) this.form.status.value=''; this.form.submit()">
                 @foreach($jenisBoleh as $k => $v)<option value="{{ $k }}" @selected($jenis === $k)>{{ $v }}</option>@endforeach
             </select></div>
         <div><label for="dari">Dari tanggal</label><input class="lp-in" type="date" id="dari" name="dari" value="{{ $filter['dari'] ?? '' }}"></div>
         <div><label for="sampai">Sampai tanggal</label><input class="lp-in" type="date" id="sampai" name="sampai" value="{{ $filter['sampai'] ?? '' }}"></div>
-        @can('laporan.semua')
+        @if($tampilAnggota)
         <div><label for="anggota_id">Anggota</label>
             <select class="lp-in" id="anggota_id" name="anggota_id"><option value="">Semua</option>
                 @foreach($anggotaOpsi as $id => $nama)<option value="{{ $id }}" @selected(($filter['anggota_id'] ?? '') == $id)>{{ $nama }}</option>@endforeach
             </select></div>
+        @endif
+        @if($tampilKapal)
         <div><label for="kapal_id">Kapal</label>
             <select class="lp-in" id="kapal_id" name="kapal_id"><option value="">Semua</option>
                 @foreach($kapalOpsi as $id => $nama)<option value="{{ $id }}" @selected(($filter['kapal_id'] ?? '') == $id)>{{ $nama }}</option>@endforeach
             </select></div>
-        @endcan
-        <div><label for="status">Status (jika relevan)</label><input class="lp-in" id="status" name="status" value="{{ $filter['status'] ?? '' }}" placeholder="mis. aktif / selesai"></div>
+        @endif
+        @if($statusOpsi !== [])
+        <div><label for="status">Status</label>
+            <select class="lp-in" id="status" name="status"><option value="">Semua</option>
+                @foreach($statusOpsi as $k => $label)<option value="{{ $k }}" @selected(($filter['status'] ?? '') === $k)>{{ $label }}</option>@endforeach
+            </select></div>
+        @endif
         <div><label for="cari">Cari</label><input class="lp-in" type="search" id="cari" name="cari" value="{{ $filter['cari'] ?? '' }}"></div>
         <button class="lp-btn" type="submit">Tampilkan</button>
     </form>
 
     @if($galat)
         <p style="color:#D71920;font-weight:600">{{ $galat }}</p>
+    @elseif($errors->any())
+        <p style="color:#D71920;font-weight:600">{{ $errors->first() }}</p>
     @elseif($laporan)
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
             <div><strong>{{ $laporan['judul'] }}</strong><br><span style="font-size:.82rem;opacity:.75">Periode: {{ $laporan['periode'] }}</span></div>

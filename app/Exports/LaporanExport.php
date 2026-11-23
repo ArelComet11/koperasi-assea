@@ -25,8 +25,19 @@ class LaporanExport implements FromArray, ShouldAutoSize, WithTitle
         }
 
         $baris[] = $this->laporan['headings'];
+        $aman = array_map(fn (array $row) => array_map([self::class, 'amankanSel'], $row), $this->laporan['rows']);
 
-        return array_merge($baris, $this->laporan['rows']);
+        return array_merge($baris, $aman);
+    }
+
+    /** Mencegah Excel Formula Injection pada sel teks yang diawali karakter formula. */
+    private static function amankanSel(mixed $nilai): mixed
+    {
+        if (! is_string($nilai) || $nilai === '') {
+            return $nilai;
+        }
+
+        return preg_match('/^[=+\-@\t\r]/', $nilai) === 1 ? "'" . $nilai : $nilai;
     }
 
     public function title(): string

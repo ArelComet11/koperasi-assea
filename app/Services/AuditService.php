@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AktivitasAdmin;
 use App\Models\User;
+use App\Support\Otorisasi;
 use Illuminate\Database\Eloquent\Model;
 
 class AuditService
@@ -12,7 +13,7 @@ class AuditService
 
     public static function catat(string $jenis, ?Model $subjek = null, ?array $lama = null, ?array $baru = null, ?string $keterangan = null, ?User $user = null): void
     {
-        $user ??= auth()->user();
+        $user ??= Otorisasi::user();
         $web = ! app()->runningInConsole() && request();
 
         AktivitasAdmin::create([

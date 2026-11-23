@@ -2,6 +2,7 @@
 
 namespace App\Filament\Concerns;
 
+use App\Support\Otorisasi;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -13,7 +14,7 @@ trait DenganIzin
 {
     protected static function punya(?string $izin): bool
     {
-        return $izin !== null && (auth()->user()?->can($izin) ?? false);
+        return $izin !== null && Otorisasi::bisa($izin);
     }
 
     public static function canViewAny(): bool { return static::punya(static::$izinLihat); }

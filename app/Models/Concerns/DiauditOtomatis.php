@@ -16,7 +16,13 @@ trait DiauditOtomatis
         static::updated(function ($m) {
             $berubah = array_diff_key($m->getChanges(), ['updated_at' => 1]);
             if ($berubah) {
-                AuditService::catat($m->getTable() . '.diubah', $m, array_intersect_key($m->getOriginal(), $berubah), self::ringkasAudit($berubah), self::labelAudit($m));
+                AuditService::catat(
+                    $m->getTable() . '.diubah',
+                    $m,
+                    self::ringkasAudit(array_intersect_key($m->getOriginal(), $berubah)),
+                    self::ringkasAudit($berubah),
+                    self::labelAudit($m),
+                );
             }
         });
     }

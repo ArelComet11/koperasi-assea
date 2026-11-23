@@ -12,6 +12,7 @@ use App\Models\SuratRekomendasi;
 use App\Services\KuotaService;
 use App\Services\PengaturanService;
 use App\Support\Format;
+use App\Support\LencanaCache;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -45,19 +46,49 @@ class SuratRekomendasiResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $recordTitleAttribute = 'nomor_surat';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $n = LencanaCache::semua()['surat'];
+
+        return $n > 0 ? (string) $n : null;
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return LencanaCache::semua()['surat_kedaluwarsa'] ? 'danger' : 'warning';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Surat rekomendasi kedaluwarsa atau segera berakhir (≤ 14 hari)';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
             Select::make('anggota_id')->label('Anggota pemilik')->required()->searchable()->live()
-                ->options(fn () => Anggota::query()->orderBy('nama_lengkap')->pluck('nama_lengkap', 'id'))
+                ->options(fn (string $operation, ?SuratRekomendasi $record) => Anggota::query()
+                    ->when($operation === 'create', fn (Builder $q) => $q->where('status', StatusAktif::Aktif->value))
+                    ->when($operation !== 'create' && $record, fn (Builder $q) => $q->where('status', StatusAktif::Aktif->value)->orWhereKey($record->anggota_id))
+                    ->orderBy('nama_lengkap')->pluck('nama_lengkap', 'id'))
                 ->afterStateUpdated(fn (Set $set) => $set('kapal_id', null))
                 ->disabledOn('edit'),
             Select::make('kapal_id')->label('Kapal')->required()->searchable()
-                ->options(fn (Get $get) => Kapal::query()->where('anggota_id', $get('anggota_id') ?: 0)->orderBy('nama_kapal')->pluck('nama_kapal', 'id'))
+                ->options(fn (Get $get, string $operation, ?SuratRekomendasi $record) => Kapal::query()
+                    ->where('anggota_id', $get('anggota_id') ?: 0)
+                    ->when($operation === 'create', fn (Builder $q) => $q->where('status', StatusAktif::Aktif->value))
+                    ->when($operation !== 'create' && $record, fn (Builder $q) => $q->where(fn (Builder $w) => $w->where('status', StatusAktif::Aktif->value)->orWhereKey($record->kapal_id)))
+                    ->orderBy('nama_kapal')->pluck('nama_kapal', 'id'))
                 ->disabledOn('edit')
-                ->rule(fn (Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
-                    if (! Kapal::query()->whereKey($value)->where('anggota_id', $get('anggota_id'))->exists()) {
-                        $fail('Kapal tidak sesuai dengan anggota pemilik.');
+                ->rule(fn (Get $get, string $operation) => function (string $attribute, $value, \Closure $fail) use ($get, $operation) {
+                    $q = Kapal::query()->whereKey($value)->where('anggota_id', $get('anggota_id'));
+                    if ($operation === 'create') {
+                        $q->where('status', StatusAktif::Aktif->value);
+                    }
+                    if (! $q->exists()) {
+                        $fail($operation === 'create'
+                            ? 'Kapal tidak sesuai dengan anggota pemilik atau berstatus nonaktif.'
+                            : 'Kapal tidak sesuai dengan anggota pemilik.');
                     }
                 }),
             TextInput::make('nomor_surat')->required()->maxLength(80)->unique(ignoreRecord: true),
@@ -79,23 +110,33 @@ class SuratRekomendasiResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['anggota', 'kapal', 'kuotaBulanIni']))
             ->columns([
                 TextColumn::make('nomor_surat')->label('Nomor surat')->searchable()->sortable(),
                 TextColumn::make('anggota.nama_lengkap')->label('Anggota')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal')->searchable(),
                 TextColumn::make('berlaku_mulai')->label('Mulai')->date('d/m/Y')->sortable(),
                 TextColumn::make('berlaku_sampai')->label('Sampai')->date('d/m/Y')->sortable(),
-                TextColumn::make('status_tampil')->label('Status')->badge()->formatStateUsing(fn ($s) => ucfirst($s))
-                    ->color(fn ($s) => match ($s) { 'aktif' => 'success', 'kedaluwarsa' => 'danger', default => 'gray' }),
+                TextColumn::make('status_tampil')->label('Status')->badge()
+                    ->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))
+                    ->color(fn ($state) => match ($state) { 'aktif' => 'success', 'belum_berlaku' => 'info', 'kedaluwarsa' => 'danger', default => 'gray' }),
                 TextColumn::make('sisa_kuota')->label('Sisa kuota bulan ini')
                     ->state(fn (SuratRekomendasi $r) => Format::liter(app(KuotaService::class)->sisa($r))),
             ])
             ->defaultSort('berlaku_sampai', 'desc')
             ->filters([
-                SelectFilter::make('status_tampil')->label('Status')->options(['aktif' => 'Aktif', 'kedaluwarsa' => 'Kedaluwarsa', 'nonaktif' => 'Nonaktif'])
+                SelectFilter::make('status_tampil')->label('Status')->options([
+                    'aktif' => 'Aktif',
+                    'belum_berlaku' => 'Belum berlaku',
+                    'segera_berakhir' => 'Segera berakhir (≤ 14 hari)',
+                    'kedaluwarsa' => 'Kedaluwarsa',
+                    'nonaktif' => 'Nonaktif',
+                ])
                     ->query(function (Builder $query, array $data) {
                         match ($data['value'] ?? null) {
-                            'aktif' => $query->where('status', 'aktif')->whereDate('berlaku_sampai', '>=', today()),
+                            'aktif' => $query->where('status', 'aktif')->whereDate('berlaku_mulai', '<=', today())->whereDate('berlaku_sampai', '>=', today()),
+                            'belum_berlaku' => $query->where('status', 'aktif')->whereDate('berlaku_mulai', '>', today()),
+                            'segera_berakhir' => $query->where('status', 'aktif')->whereDate('berlaku_sampai', '>=', today())->whereDate('berlaku_sampai', '<=', today()->addDays(14)),
                             'kedaluwarsa' => $query->where('status', 'aktif')->whereDate('berlaku_sampai', '<', today()),
                             'nonaktif' => $query->where('status', 'nonaktif'),
                             default => null,

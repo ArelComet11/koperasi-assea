@@ -7,8 +7,10 @@ use App\Filament\Admin\Resources\JadwalPembelianResource\Pages;
 use App\Filament\Concerns\Bisnis;
 use App\Filament\Concerns\DenganIzin;
 use App\Models\JadwalPembelian;
+use App\Models\User;
 use App\Services\JadwalService;
 use App\Support\Format;
+use App\Support\LencanaCache;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DateTimePicker;
@@ -18,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class JadwalPembelianResource extends Resource
 {
@@ -35,9 +38,34 @@ class JadwalPembelianResource extends Resource
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?int $navigationSort = 2;
 
+    public static function getNavigationBadge(): ?string
+    {
+        $n = LencanaCache::semua()['jadwal'];
+
+        return $n > 0 ? (string) $n : null;
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return LencanaCache::semua()['jadwal_ditunda'] ? 'warning' : 'info';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Jadwal pembelian aktif (terjadwal / ditunda)';
+    }
+
     private static function aktif(JadwalPembelian $r): bool
     {
         return in_array($r->status, [StatusJadwal::Terjadwal, StatusJadwal::Ditunda], true);
+    }
+
+    private static function pengguna(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
     }
 
     public static function table(Table $table): Table
@@ -49,7 +77,7 @@ class JadwalPembelianResource extends Resource
                 TextColumn::make('pengajuan.nomor_pengajuan')->label('No. pengajuan')->searchable(),
                 TextColumn::make('pengajuan.anggota.nama_lengkap')->label('Anggota'),
                 TextColumn::make('pengajuan.kapal.nama_kapal')->label('Kapal'),
-                TextColumn::make('liter_disetujui')->label('Liter')->formatStateUsing(fn ($s) => Format::liter($s)),
+                TextColumn::make('liter_disetujui')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('keterangan')->placeholder('-')->wrap()->toggleable(),
             ])
@@ -75,16 +103,16 @@ class JadwalPembelianResource extends Resource
                             Textarea::make('keterangan')->default(fn (JadwalPembelian $r) => $r->keterangan),
                         ])
                         ->action(fn (JadwalPembelian $record, array $data) => Bisnis::jalankan(
-                            fn () => app(JadwalService::class)->ubah($record, $data['tanggal_waktu'], $data['keterangan'] ?? null, auth()->user()), 'Jadwal diubah.')),
+                            fn () => app(JadwalService::class)->ubah($record, $data['tanggal_waktu'], $data['keterangan'] ?? null, self::pengguna()), 'Jadwal diubah.')),
                     Action::make('tunda')->label('Tunda')->icon('heroicon-o-pause-circle')->color('warning')
                         ->visible(fn (JadwalPembelian $r) => $r->status === StatusJadwal::Terjadwal)
                         ->schema([Textarea::make('alasan')->label('Alasan penundaan')->required()])
                         ->action(fn (JadwalPembelian $record, array $data) => Bisnis::jalankan(
-                            fn () => app(JadwalService::class)->tunda($record, $data['alasan'], auth()->user()), 'Jadwal ditunda. Atur ulang dengan "Ubah jadwal".')),
+                            fn () => app(JadwalService::class)->tunda($record, $data['alasan'], self::pengguna()), 'Jadwal ditunda. Atur ulang dengan "Ubah jadwal".')),
                     Action::make('selesai')->label('Tandai selesai')->icon('heroicon-o-check-circle')->color('success')
                         ->visible(fn (JadwalPembelian $r) => self::aktif($r))->requiresConfirmation()
                         ->action(fn (JadwalPembelian $record) => Bisnis::jalankan(
-                            fn () => app(JadwalService::class)->tandaiSelesai($record, auth()->user()), 'Jadwal ditandai selesai.')),
+                            fn () => app(JadwalService::class)->tandaiSelesai($record, self::pengguna()), 'Jadwal ditandai selesai.')),
                 ]),
             ]);
     }

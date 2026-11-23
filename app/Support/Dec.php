@@ -9,8 +9,23 @@ class Dec
 
     public static function n(mixed $v): string
     {
-        $v = $v === null || $v === '' ? '0' : (string) $v;
-        return bcadd($v, '0', self::SCALE);
+        if ($v === null || $v === '') {
+            return '0.00';
+        }
+
+        if (is_float($v)) {
+            $s = sprintf('%.10F', $v);
+        } else {
+            $s = trim((string) $v);
+            if ($s === '' || ! is_numeric($s)) {
+                return '0.00';
+            }
+            if (stripos($s, 'e') !== false) {
+                $s = sprintf('%.10F', (float) $s);
+            }
+        }
+
+        return bcadd($s, '0', self::SCALE);
     }
 
     public static function add(mixed $a, mixed $b): string { return bcadd(self::n($a), self::n($b), self::SCALE); }

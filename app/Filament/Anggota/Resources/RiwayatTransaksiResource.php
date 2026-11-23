@@ -5,6 +5,7 @@ namespace App\Filament\Anggota\Resources;
 use App\Filament\Anggota\Resources\RiwayatTransaksiResource\Pages;
 use App\Filament\Concerns\KhususAnggota;
 use App\Models\PengajuanPembelian;
+use App\Support\Dec;
 use App\Support\Format;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
@@ -26,7 +27,9 @@ class RiwayatTransaksiResource extends Resource
     /** Transaksi = pengajuan yang selesai (lunas dan BBM sudah disalurkan). */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('status', 'selesai');
+        return parent::getEloquentQuery()
+            ->where('status', 'selesai')
+            ->with(['tagihan.penyesuaian' => fn ($q) => $q->where('diterapkan', false)]);
     }
 
     public static function table(Table $table): Table
@@ -36,9 +39,16 @@ class RiwayatTransaksiResource extends Resource
                 TextColumn::make('selesai_pada')->label('Selesai')->dateTime('d/m/Y H:i')->sortable(),
                 TextColumn::make('nomor_pengajuan')->label('No. transaksi')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
-                TextColumn::make('penyaluran.liter_aktual')->label('Liter diterima')->formatStateUsing(fn ($s) => Format::liter($s)),
-                TextColumn::make('harga_per_liter')->label('Harga/L')->formatStateUsing(fn ($s) => Format::rupiah($s)),
-                TextColumn::make('total_tagihan')->label('Total')->formatStateUsing(fn ($s) => Format::rupiah($s)),
+                TextColumn::make('penyaluran.liter_aktual')->label('Liter diterima')->formatStateUsing(fn ($state) => Format::liter($state)),
+                TextColumn::make('harga_per_liter')->label('Harga/L')->formatStateUsing(fn ($state) => Format::rupiah($state)),
+                TextColumn::make('total_tagihan')->label('Total')->formatStateUsing(fn ($state) => Format::rupiah($state)),
+                TextColumn::make('koreksi')->label('Koreksi')->badge()->color('warning')
+                    ->state(function (PengajuanPembelian $record): ?string {
+                        $selisih = $record->tagihan?->penyesuaian->where('diterapkan', false)->sum('selisih');
+
+                        return Dec::lt($selisih, 0) ? 'Refund ' . Format::rupiah(Dec::sub('0', $selisih)) : null;
+                    })
+                    ->placeholder('-'),
             ])
             ->defaultSort('selesai_pada', 'desc');
     }
