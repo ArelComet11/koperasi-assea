@@ -224,7 +224,6 @@ class LaporanService
         $salur = Dec::sub('0', $jumlah([JenisMutasi::Penyaluran->value]));
         $koreksi = $jumlah([JenisMutasi::Koreksi->value]);
         $fisikAkhir = Dec::n(MutasiStok::query()->where('tanggal', '<=', $sampai)->sum('delta_fisik'));
-        $alokasi = Dec::n(MutasiStok::query()->where('tanggal', '<=', $sampai)->sum('delta_alokasi'));
 
         return [
             'headings' => ['Keterangan', 'Liter'],
@@ -234,8 +233,6 @@ class LaporanService
                 ['Penyaluran aktual', (float) $salur],
                 ['Koreksi', (float) $koreksi],
                 ['Stok fisik akhir', (float) $fisikAkhir],
-                ['Stok dialokasikan (akhir)', (float) $alokasi],
-                ['Stok tersedia (akhir)', (float) Dec::sub($fisikAkhir, $alokasi)],
             ],
         ];
     }

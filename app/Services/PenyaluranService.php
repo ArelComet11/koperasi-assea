@@ -85,9 +85,8 @@ class PenyaluranService
             $this->pasokan->realisasi($pas, $disetujui, $aktual);
 
             $waktuPenyaluran = $tanggal ?? now();
-            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), Dec::sub('0', $aktual), $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
+            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), '0', $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
             if (Dec::gt($sisa, 0)) {
-                $this->stok->catat(JenisMutasi::LepasAlokasi, '0', Dec::sub('0', $sisa), $alokasi, 'Sisa alokasi dilepas ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
                 $this->sesuaikanTagihan($p, $tagihan, $aktual, $petugas);
             }
 

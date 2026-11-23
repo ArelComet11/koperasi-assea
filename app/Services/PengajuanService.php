@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\JenisMutasi;
 use App\Enums\StatusAktif;
 use App\Enums\StatusAlokasi;
 use App\Enums\StatusJadwal;
@@ -177,7 +176,6 @@ class PengajuanService
 
             $this->kuota->alokasi($kuota, $liter);
             $this->pasokan->alokasi($pas, $liter);
-            $this->stok->catat(JenisMutasi::Alokasi, '0', $liter, $alokasi, 'Alokasi pengajuan ' . $p->nomor_pengajuan, $user);
 
             Tagihan::create([
                 'nomor_tagihan' => $this->nomor->terbitkan('tagihan'),
@@ -247,7 +245,6 @@ class PengajuanService
             if (Dec::gt($sisa, 0)) {
                 $this->kuota->lepas($kuota, $sisa);
                 $this->pasokan->lepas($pas, $sisa);
-                $this->stok->catat(JenisMutasi::LepasAlokasi, '0', Dec::sub('0', $sisa), $alokasi, 'Pembatalan ' . $p->nomor_pengajuan, $user);
             }
 
             $alokasi->forceFill([

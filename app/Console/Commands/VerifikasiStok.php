@@ -16,7 +16,6 @@ class VerifikasiStok extends Command
         $v = $stok->verifikasi();
         $this->table(['', 'Saldo', 'Ledger'], [
             ['Stok fisik', $v['fisik_saldo'], $v['fisik_ledger']],
-            ['Stok dialokasikan', $v['alokasi_saldo'], $v['alokasi_ledger']],
         ]);
 
         if ($v['konsisten']) {

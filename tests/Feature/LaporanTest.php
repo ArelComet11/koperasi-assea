@@ -48,7 +48,7 @@ class LaporanTest extends TestCase
 
         $stok = collect(app(LaporanService::class)->bangun('persediaan')['rows'])->keyBy(0);
         $this->assertSame(9500.0, $stok['Stok fisik akhir'][1]);
-        $this->assertSame(9500.0, $stok['Stok tersedia (akhir)'][1]);
+        $this->assertFalse($stok->has('Stok dialokasikan (akhir)'));
     }
 
     public function test_export_excel_dan_cetak(): void
