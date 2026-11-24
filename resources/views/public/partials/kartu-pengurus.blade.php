@@ -38,13 +38,13 @@
 
                 @if($fotoUrl)
                     @if($transparan)
-                        {{-- Clip bawah mengikuti lingkaran, atas sedikit menonjol rapi --}}
-                        <div class="absolute inset-x-0 bottom-0 flex h-[112%] items-end justify-center overflow-hidden rounded-b-full">
+                        {{-- Potret PNG transparan hasil framing otomatis (wajah proporsional & bahu menyatu di lingkaran) --}}
+                        <div class="absolute inset-x-0 bottom-0 flex h-[106%] items-end justify-center overflow-hidden rounded-b-full">
                             <img
                                 src="{{ $fotoUrl }}"
                                 alt="{{ $p->nama }}"
                                 loading="lazy"
-                                class="h-full w-full object-contain object-bottom drop-shadow-[0_6px_10px_rgba(0,0,0,0.35)]"
+                                class="h-full w-full object-contain object-bottom drop-shadow-[0_6px_10px_rgba(0,0,0,0.32)]"
                             >
                         </div>
                     @else

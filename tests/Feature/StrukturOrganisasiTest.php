@@ -7,6 +7,8 @@ use App\Models\Pengurus;
 use Database\Seeders\PengurusSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\Concerns\MembuatData;
 use Tests\TestCase;
@@ -70,7 +72,6 @@ class StrukturOrganisasiTest extends TestCase
                 'nama' => 'Dr. Andi Pratama, M.M.',
                 'jabatan' => 'Ketua Koperasi',
                 'level' => 1,
-                'tema_pangkat' => 'emas_eksklusif',
                 'urutan' => 1,
                 'foto_transparan' => true,
                 'tampil' => true,
@@ -79,8 +80,27 @@ class StrukturOrganisasiTest extends TestCase
 
         $p = Pengurus::query()->where('nama', 'Dr. Andi Pratama, M.M.')->firstOrFail();
         $this->assertSame(1, $p->level);
-        $this->assertSame('emas_eksklusif', $p->tema_pangkat);
         $this->assertTrue($p->foto_transparan);
         $this->assertTrue($p->isFotoTransparan());
+    }
+
+    public function test_endpoint_proses_foto_otomatis_terlindungi_dan_menyimpan_png(): void
+    {
+        Storage::fake('public');
+        $admin = $this->admin();
+        $finance = $this->finance();
+        [, , , $anggotaUser] = $this->buatAnggota('SO-01');
+
+        $png = UploadedFile::fake()->image('ketua-nobg.png', 600, 600);
+
+        $this->actingAs($finance)->postJson(route('admin.pengurus.proses-foto'), ['foto' => $png])->assertForbidden();
+        $this->actingAs($anggotaUser)->postJson(route('admin.pengurus.proses-foto'), ['foto' => $png])->assertForbidden();
+
+        $res = $this->actingAs($admin)->postJson(route('admin.pengurus.proses-foto'), ['foto' => $png]);
+        $res->assertOk()->assertJsonStructure(['path', 'url']);
+        $path = $res->json('path');
+        $this->assertStringStartsWith('pengurus/pengurus-', $path);
+        $this->assertStringEndsWith('.png', $path);
+        Storage::disk('public')->assertExists($path);
     }
 }

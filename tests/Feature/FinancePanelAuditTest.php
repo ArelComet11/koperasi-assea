@@ -79,7 +79,7 @@ class FinancePanelAuditTest extends TestCase
         Livewire::actingAs($finance)->test(ManageRiwayatHarga::class)->assertSuccessful()->assertActionHidden('create');
 
         // #5 Akses laporan terlarang menampilkan pesan error yang jelas (bukan halaman kosong)
-        $this->get('/admin/laporan?jenis=anggota')
+        $this->get('/admin/laporan?jenis=kapal')
             ->assertOk()
             ->assertSee('Anda tidak memiliki izin untuk membuka jenis laporan tersebut.');
         $this->get('/admin/laporan?jenis=keuangan')

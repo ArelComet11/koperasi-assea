@@ -17,9 +17,10 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
+        "@fontsource-variable/plus-jakarta-sans": "^5.0.0",
+        "@mediapipe/tasks-vision": "^1.2.3",
         "alpinejs": "^3.14.0",
         "gsap": "^3.12.0",
-        "lucide": "^1.0.0",
-        "@fontsource-variable/plus-jakarta-sans": "^5.0.0"
+        "lucide": "^1.0.0"
     }
 }

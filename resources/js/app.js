@@ -44,7 +44,7 @@ function initOrgCharts() {
         const path = document.createElementNS(svgNS, 'path');
         path.setAttribute('d', d);
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#1e293b');
+        path.setAttribute('stroke', '#075B37');
         path.setAttribute('stroke-width', '2.4');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');

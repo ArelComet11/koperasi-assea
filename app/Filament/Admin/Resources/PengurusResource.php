@@ -7,12 +7,12 @@ use App\Filament\Concerns\DenganIzin;
 use App\Models\Pengurus;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
@@ -54,7 +54,7 @@ class PengurusResource extends Resource
                 ->required()
                 ->maxLength(100),
             Select::make('level')
-                ->label('Level hierarki struktur')
+                ->label('Level jabatan di struktur')
                 ->options(Pengurus::LEVEL_OPSI)
                 ->default(4)
                 ->required()
@@ -65,33 +65,16 @@ class PengurusResource extends Resource
                 ->default(1)
                 ->minValue(0)
                 ->helperText('Angka lebih kecil tampil lebih kiri pada level yang sama.'),
-            Select::make('tema_pangkat')
-                ->label('Warna latar lingkaran (pangkat)')
-                ->options(Pengurus::TEMA_OPSI)
-                ->default('otomatis')
-                ->required()
-                ->native(false)
-                ->columnSpanFull(),
-            FileUpload::make('foto')
+            Field::make('foto')
                 ->label('Foto pengurus')
-                ->image()
-                ->disk('public')
-                ->directory('pengurus')
-                ->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg'])
-                ->maxSize(3072)
-                ->imageEditor()
-                ->imageEditorAspectRatios(['1:1', '3:4', null])
-                ->helperText('Mendukung PNG transparan (menyatu dengan latar pangkat emas/biru) maupun JPG/WebP biasa. Maksimal 3 MB.')
+                ->view('filament.forms.components.foto-pengurus-otomatis')
                 ->columnSpanFull(),
-            View::make('filament.components.hapus-background-bantu')
-                ->columnSpanFull(),
-            Toggle::make('foto_transparan')
-                ->label('Mode foto PNG transparan (kepala menonjol rapi)')
-                ->helperText('Aktifkan jika foto tanpa background agar menyatu dengan lingkaran emas.')
-                ->default(false),
+            Hidden::make('foto_transparan')
+                ->default(true),
             Toggle::make('tampil')
                 ->label('Tampilkan di website')
-                ->default(true),
+                ->default(true)
+                ->columnSpanFull(),
         ])->columns(2);
     }
 
@@ -112,8 +95,6 @@ class PengurusResource extends Resource
                         default => 'gray',
                     }),
                 TextColumn::make('urutan')->label('Urutan')->sortable(),
-                TextColumn::make('tema_pangkat')->label('Tema warna')->toggleable(isToggledHiddenByDefault: true)
-                    ->formatStateUsing(fn ($state) => Pengurus::TEMA_OPSI[(string) $state] ?? 'Otomatis'),
                 IconColumn::make('tampil')->label('Aktif')->boolean(),
             ])
             ->filters([

@@ -2,16 +2,12 @@
 
 namespace App\Services;
 
-use App\Enums\JenisMutasi;
 use App\Enums\StatusAktif;
-use App\Enums\StatusPenerimaan;
 use App\Enums\StatusPembayaranCatatan;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusTagihan;
-use App\Models\Anggota;
 use App\Models\Kapal;
-use App\Models\MutasiStok;
-use App\Models\PenerimaanBbm;
+use App\Models\KuotaRekomendasiBulanan;
 use App\Models\Pembayaran;
 use App\Models\PengajuanPembelian;
 use App\Models\PenyaluranBbm;
@@ -27,12 +23,9 @@ use Illuminate\Support\Facades\DB;
 class LaporanService
 {
     public const JENIS = [
-        'anggota' => 'Laporan Anggota',
         'kapal' => 'Laporan Kapal',
         'surat' => 'Laporan Surat Rekomendasi',
-        'penerimaan' => 'Laporan Penerimaan BBM',
-        'penyaluran' => 'Laporan Penyaluran BBM',
-        'persediaan' => 'Laporan Persediaan',
+        'penjualan' => 'Laporan Penjualan',
         'transaksi' => 'Laporan Transaksi',
         'keuangan' => 'Laporan Keuangan',
     ];
@@ -65,25 +58,29 @@ class LaporanService
         $f['_sampai'] = $sampai;
 
         $hasil = match ($jenis) {
-            'anggota' => $this->anggota($f),
             'kapal' => $this->kapal($f),
             'surat' => $this->surat($f),
-            'penerimaan' => $this->penerimaan($f),
             'penyaluran' => $this->penyaluran($f),
-            'persediaan' => $this->persediaan($f),
             'transaksi' => $this->transaksi($f),
             'keuangan' => $this->keuangan($f),
             default => throw new \InvalidArgumentException('Jenis laporan tidak dikenal.'),
         };
 
-        $adaPeriode = in_array($jenis, ['penerimaan', 'penyaluran', 'persediaan', 'transaksi', 'keuangan'], true);
+        $adaPeriode = in_array($jenis, ['surat', 'penyaluran', 'transaksi', 'keuangan'], true);
+        $periodeTeks = $adaPeriode ? $dari->translatedFormat('d F Y') . ' s.d. ' . $sampai->translatedFormat('d F Y') : 'Per ' . now()->translatedFormat('d F Y');
+        if ($jenis === 'surat' && $dari->isSameMonth($sampai)) {
+            $periodeTeks = $dari->translatedFormat('F Y');
+        }
 
         return [
+            'jenis' => $jenis,
             'judul' => self::JENIS[$jenis],
-            'periode' => $adaPeriode ? $dari->translatedFormat('d F Y') . ' s.d. ' . $sampai->translatedFormat('d F Y') : 'Per ' . now()->translatedFormat('d F Y'),
+            'subjudul' => $hasil['subjudul'] ?? null,
+            'periode' => $periodeTeks,
             'ringkasan' => $hasil['ringkasan'] ?? [],
             'headings' => $hasil['headings'],
             'rows' => $hasil['rows'],
+            'bulanan' => $hasil['bulanan'] ?? null,
         ];
     }
 
@@ -93,21 +90,6 @@ class LaporanService
         $sampai = ! empty($f['sampai']) ? Carbon::parse($f['sampai'])->endOfDay() : now()->endOfDay();
 
         return [$dari, $sampai];
-    }
-
-    private function anggota(array $f): array
-    {
-        $q = Anggota::query()->withCount('kapal')->orderBy('kode_anggota');
-        if (! empty($f['status'])) $q->where('status', $f['status']);
-        if (! empty($f['anggota_id'])) $q->whereKey($f['anggota_id']);
-        if (! empty($f['cari'])) $q->where(fn ($w) => $w->where('nama_lengkap', 'like', "%{$f['cari']}%")->orWhere('kode_anggota', 'like', "%{$f['cari']}%"));
-        $data = $q->get();
-
-        return [
-            'ringkasan' => ['Total anggota' => $data->count(), 'Aktif' => $data->where('status', StatusAktif::Aktif)->count(), 'Nonaktif' => $data->where('status', StatusAktif::Nonaktif)->count()],
-            'headings' => ['Kode', 'Nama', 'Telepon', 'Status', 'Jumlah Kapal', 'Tanggal Bergabung'],
-            'rows' => $data->map(fn ($a) => [$a->kode_anggota, $a->nama_lengkap, $a->telepon, $a->status->getLabel(), $a->kapal_count, $a->tanggal_bergabung?->format('d/m/Y')])->all(),
-        ];
     }
 
     private function kapal(array $f): array
@@ -124,15 +106,19 @@ class LaporanService
             ->pluck('total', 'kid');
 
         return [
-            'ringkasan' => ['Total kapal' => $data->count()],
+            'ringkasan' => [
+                'Total kapal' => $data->count(),
+                'Aktif' => $data->where('status', StatusAktif::Aktif)->count(),
+                'Nonaktif' => $data->where('status', StatusAktif::Nonaktif)->count(),
+            ],
             'headings' => ['Kode', 'Nama Kapal', 'Pemilik (Anggota)', 'No. Registrasi', 'Jenis', 'Status', 'Total BBM Diterima (L)'],
-            'rows' => $data->map(fn ($k) => [$k->kode_kapal, $k->nama_kapal, $k->anggota?->nama_lengkap, $k->no_registrasi, $k->jenis_kapal, $k->status->getLabel(), (float) ($total[$k->id] ?? 0)])->all(),
+            'rows' => $data->map(fn ($k) => [$k->kode_kapal, $k->nama_kapal, $k->anggota?->nama_lengkap, $k->no_registrasi ?: '-', $k->jenis_kapal ?: '-', $k->status->getLabel(), (float) ($total[$k->id] ?? 0)])->all(),
         ];
     }
 
     private function surat(array $f): array
     {
-        $q = SuratRekomendasi::query()->with(['anggota', 'kapal'])->orderBy('nomor_surat');
+        $q = SuratRekomendasi::query()->with(['anggota', 'kapal']);
         if (! empty($f['anggota_id'])) $q->where('anggota_id', $f['anggota_id']);
         if (! empty($f['kapal_id'])) $q->where('kapal_id', $f['kapal_id']);
         if (! empty($f['cari'])) {
@@ -141,50 +127,168 @@ class LaporanService
                 ->orWhereHas('anggota', fn ($a) => $a->where('nama_lengkap', 'like', "%{$c}%"))
                 ->orWhereHas('kapal', fn ($k) => $k->where('nama_kapal', 'like', "%{$c}%")));
         }
+
         $data = $q->get();
-        if (! empty($f['status'])) $data = $data->filter(fn ($s) => $s->status_tampil === $f['status'])->values();
+        if (! empty($f['status'])) {
+            $data = $data->filter(fn ($s) => $s->status_tampil === $f['status'])->values();
+        }
+
+        $data = $data->sortBy(fn ($s) => [
+            mb_strtolower((string) ($s->anggota?->nama_lengkap ?? '')),
+            mb_strtolower((string) ($s->kapal?->nama_kapal ?? '')),
+            mb_strtolower((string) $s->nomor_surat),
+        ])->values();
+
+        // Susun daftar bulan dalam rentang (maksimal 24 bulan agar memori tetap aman)
+        $mulaiBulan = $f['_dari']->copy()->startOfMonth();
+        $akhirBulanTarget = $f['_sampai']->copy()->startOfMonth();
+        $bulanList = [];
+        for ($cursor = $mulaiBulan->copy(); $cursor->lte($akhirBulanTarget) && count($bulanList) < 24; $cursor->addMonth()) {
+            $bulanList[] = $cursor->copy();
+        }
+        if ($bulanList === []) {
+            $bulanList[] = now()->startOfMonth();
+        }
+
+        $sameYear = $bulanList[0]->year === end($bulanList)->year;
+        $suratIds = $data->pluck('id')->all();
+        $periodeStrings = array_map(fn (Carbon $m) => $m->toDateString(), $bulanList);
+
+        // Preload batas kuota bulanan (1 query, tanpa N+1)
+        $kuotaMap = [];
+        if ($suratIds !== []) {
+            $kuotaRows = KuotaRekomendasiBulanan::query()
+                ->withoutGlobalScopes()
+                ->whereIn('surat_rekomendasi_id', $suratIds)
+                ->whereIn('periode', $periodeStrings)
+                ->get(['surat_rekomendasi_id', 'periode', 'batas_liter']);
+
+            foreach ($kuotaRows as $kr) {
+                $pStr = Carbon::parse($kr->periode)->toDateString();
+                $kuotaMap["{$kr->surat_rekomendasi_id}|{$pStr}"] = Dec::n($kr->batas_liter);
+            }
+        }
+
+        // Preload penyaluran aktual dalam rentang bulan (1 query, kompatibel MySQL & SQLite)
+        $harianMap = [];
+        if ($suratIds !== []) {
+            $rentangAwal = $bulanList[0]->copy()->startOfMonth()->startOfDay();
+            $rentangAkhir = end($bulanList)->copy()->endOfMonth()->endOfDay();
+
+            $salurRows = PenyaluranBbm::query()
+                ->join('pengajuan_pembelian', 'pengajuan_pembelian.id', '=', 'penyaluran_bbm.pengajuan_id')
+                ->whereIn('pengajuan_pembelian.surat_rekomendasi_id', $suratIds)
+                ->whereBetween('penyaluran_bbm.tanggal_penyaluran', [$rentangAwal, $rentangAkhir])
+                ->get([
+                    'pengajuan_pembelian.surat_rekomendasi_id as surat_id',
+                    'penyaluran_bbm.tanggal_penyaluran',
+                    'penyaluran_bbm.liter_aktual',
+                ]);
+
+            foreach ($salurRows as $sr) {
+                $tgl = Carbon::parse($sr->tanggal_penyaluran);
+                $ym = $tgl->format('Y-m');
+                $sid = (int) $sr->surat_id;
+                $day = (int) $tgl->day;
+                $harianMap[$ym][$sid][$day] = Dec::add($harianMap[$ym][$sid][$day] ?? '0', $sr->liter_aktual);
+            }
+        }
+
+        $bulanan = [];
+        $flatRows = [];
+        $grandVolRekom = '0.00';
+        $grandPenyaluran = '0.00';
+        $grandVsRekom = '0.00';
+        $singleMonth = count($bulanList) === 1;
+
+        foreach ($bulanList as $m) {
+            $ym = $m->format('Y-m');
+            $periodeStr = $m->toDateString();
+            $awalBulan = $m->copy()->startOfMonth()->startOfDay();
+            $akhirBulan = $m->copy()->endOfMonth()->endOfDay();
+            $bulanLabel = $sameYear ? $m->translatedFormat('F') : $m->translatedFormat('F Y');
+
+            $rowsBulan = [];
+            $totalHarian = array_fill(1, 31, '0.00');
+            $totalVolBulan = '0.00';
+            $totalPenyaluranBulan = '0.00';
+            $totalVsBulan = '0.00';
+
+            foreach ($data as $s) {
+                $sid = (int) $s->id;
+                $adaSalur = ! empty($harianMap[$ym][$sid]);
+                $berlakuDiBulan = $s->berlaku_mulai->copy()->startOfDay()->lte($akhirBulan)
+                    && $s->berlaku_sampai->copy()->endOfDay()->gte($awalBulan);
+
+                if (! $adaSalur && ! $berlakuDiBulan && ! ($singleMonth && ! empty($f['status']))) {
+                    continue;
+                }
+
+                $volRekom = $kuotaMap["{$sid}|{$periodeStr}"] ?? $this->kuota->batas($s);
+                $harian = [];
+                $totalSurat = '0.00';
+
+                for ($d = 1; $d <= 31; $d++) {
+                    $val = $harianMap[$ym][$sid][$d] ?? null;
+                    if ($val !== null && Dec::gt($val, 0)) {
+                        $harian[$d] = (float) $val;
+                        $totalSurat = Dec::add($totalSurat, $val);
+                        $totalHarian[$d] = Dec::add($totalHarian[$d], $val);
+                    } else {
+                        $harian[$d] = null;
+                    }
+                }
+
+                $vsRekom = Dec::sub($totalSurat, $volRekom);
+                $totalVolBulan = Dec::add($totalVolBulan, $volRekom);
+                $totalPenyaluranBulan = Dec::add($totalPenyaluranBulan, $totalSurat);
+                $totalVsBulan = Dec::add($totalVsBulan, $vsRekom);
+
+                $rowObj = [
+                    'nama' => (string) ($s->anggota?->nama_lengkap ?? ''),
+                    'nama_kapal' => (string) ($s->kapal?->nama_kapal ?? ''),
+                    'no_rekom' => (string) $s->nomor_surat,
+                    'vol_rekom' => (float) $volRekom,
+                    'harian' => $harian,
+                    'total' => (float) $totalSurat,
+                    'total_vs_rekom' => (float) $vsRekom,
+                ];
+                $rowsBulan[] = $rowObj;
+
+                $flatRows[] = array_merge(
+                    [count($rowsBulan), $rowObj['nama'], $rowObj['nama_kapal'], $rowObj['no_rekom'], $rowObj['vol_rekom']],
+                    array_values($harian),
+                    [$rowObj['total'], $rowObj['total_vs_rekom']]
+                );
+            }
+
+            $grandVolRekom = Dec::add($grandVolRekom, $totalVolBulan);
+            $grandPenyaluran = Dec::add($grandPenyaluran, $totalPenyaluranBulan);
+            $grandVsRekom = Dec::add($grandVsRekom, $totalVsBulan);
+
+            $bulanan[] = [
+                'bulan_label' => $bulanLabel,
+                'sheet_title' => $bulanLabel,
+                'tahun' => (int) $m->year,
+                'bulan' => (int) $m->month,
+                'rows' => $rowsBulan,
+                'total_harian' => array_map(fn ($v) => (float) $v, $totalHarian),
+                'total_vol_rekom' => (float) $totalVolBulan,
+                'total_penyaluran' => (float) $totalPenyaluranBulan,
+                'total_vs_rekom' => (float) $totalVsBulan,
+            ];
+        }
 
         return [
             'ringkasan' => [
                 'Total surat' => $data->count(),
-                'Aktif' => $data->where('status_tampil', 'aktif')->count(),
-                'Kedaluwarsa' => $data->where('status_tampil', 'kedaluwarsa')->count(),
+                'Total Vol Rekom (L)' => (float) $grandVolRekom,
+                'Total Penyaluran (L)' => (float) $grandPenyaluran,
+                'Total Vs Rekom (L)' => (float) $grandVsRekom,
             ],
-            'headings' => ['Nomor Surat', 'Anggota', 'Kapal', 'Berlaku Mulai', 'Berlaku Sampai', 'Status', 'Batas Kuota/Bulan (L)', 'Terpakai+Alokasi Bulan Ini (L)', 'Sisa Kuota (L)'],
-            'rows' => $data->map(function ($s) {
-                $batas = $this->kuota->batas($s);
-                $sisa = $this->kuota->sisa($s);
-
-                return [$s->nomor_surat, $s->anggota?->nama_lengkap, $s->kapal?->nama_kapal, $s->berlaku_mulai->format('d/m/Y'), $s->berlaku_sampai->format('d/m/Y'),
-                    ucfirst(str_replace('_', ' ', $s->status_tampil)), (float) $batas, (float) Dec::sub($batas, $sisa), (float) $sisa];
-            })->all(),
-        ];
-    }
-
-    private function penerimaan(array $f): array
-    {
-        $status = ! empty($f['status']) ? $f['status'] : StatusPenerimaan::Terkonfirmasi->value;
-        $q = PenerimaanBbm::query()->where('status', $status)
-            ->whereDate('tanggal_penerimaan', '>=', $f['_dari']->toDateString())->whereDate('tanggal_penerimaan', '<=', $f['_sampai']->toDateString())
-            ->orderBy('tanggal_penerimaan')->orderBy('id');
-        if (! empty($f['cari'])) {
-            $c = $f['cari'];
-            $q->where(fn ($w) => $w->where('nama_pemasok', 'like', "%{$c}%")
-                ->orWhere('nomor_penerimaan', 'like', "%{$c}%")
-                ->orWhere('nomor_dokumen', 'like', "%{$c}%"));
-        }
-        $data = $q->get();
-
-        $ringkasan = ['Total penerimaan (liter)' => (float) $data->sum('liter')];
-        foreach ($data->groupBy(fn ($r) => $r->periode->translatedFormat('F Y')) as $bulan => $g) {
-            $ringkasan["Total {$bulan} (liter)"] = (float) $g->sum('liter');
-        }
-
-        return [
-            'ringkasan' => $ringkasan,
-            'headings' => ['No. Penerimaan', 'Tanggal', 'Pemasok / Sumber', 'Liter', 'Harga/Liter', 'Total Nilai', 'No. Dokumen', 'Override Pasokan'],
-            'rows' => $data->map(fn ($r) => [$r->nomor_penerimaan, $r->tanggal_penerimaan->format('d/m/Y'), $r->nama_pemasok, (float) $r->liter,
-                $r->harga_per_liter !== null ? (float) $r->harga_per_liter : null, $r->total_nilai !== null ? (float) $r->total_nilai : null, $r->nomor_dokumen, $r->override_pasokan ? 'Ya' : 'Tidak'])->all(),
+            'headings' => array_merge(['NO', 'Nama', 'Nama Kapal', 'No Rekom', 'Vol Rekom'], array_map('strval', range(1, 31)), ['Total', 'Total Vs Rekom']),
+            'rows' => $flatRows,
+            'bulanan' => $bulanan,
         ];
     }
 
@@ -208,32 +312,6 @@ class LaporanService
             'headings' => ['No. Penyaluran', 'Tanggal', 'No. Pengajuan', 'Anggota', 'Kapal', 'No. Surat', 'Disetujui (L)', 'Aktual (L)', 'Petugas'],
             'rows' => $data->map(fn ($r) => [$r->nomor_penyaluran, $r->tanggal_penyaluran->format('d/m/Y H:i'), $r->pengajuan->nomor_pengajuan, $r->pengajuan->anggota?->nama_lengkap,
                 $r->pengajuan->kapal?->nama_kapal, $r->pengajuan->suratRekomendasi?->nomor_surat, (float) $r->liter_disetujui, (float) $r->liter_aktual, $r->petugas?->name])->all(),
-        ];
-    }
-
-    private function persediaan(array $f): array
-    {
-        $dari = $f['_dari'];
-        $sampai = $f['_sampai'];
-
-        $awal = Dec::n(MutasiStok::query()->where('tanggal', '<', $dari)->sum('delta_fisik'));
-        $dalam = MutasiStok::query()->whereBetween('tanggal', [$dari, $sampai]);
-        $jumlah = fn (array $j) => Dec::n((clone $dalam)->whereIn('jenis', $j)->sum('delta_fisik'));
-
-        $terima = $jumlah([JenisMutasi::Penerimaan->value, JenisMutasi::PembatalanPenerimaan->value, JenisMutasi::SaldoAwal->value]);
-        $salur = Dec::sub('0', $jumlah([JenisMutasi::Penyaluran->value]));
-        $koreksi = $jumlah([JenisMutasi::Koreksi->value]);
-        $fisikAkhir = Dec::n(MutasiStok::query()->where('tanggal', '<=', $sampai)->sum('delta_fisik'));
-
-        return [
-            'headings' => ['Keterangan', 'Liter'],
-            'rows' => [
-                ['Stok awal periode', (float) $awal],
-                ['Penerimaan (termasuk saldo awal, neto pembatalan)', (float) $terima],
-                ['Penyaluran aktual', (float) $salur],
-                ['Koreksi', (float) $koreksi],
-                ['Stok fisik akhir', (float) $fisikAkhir],
-            ],
         ];
     }
 

@@ -158,12 +158,12 @@ class FullWhiteboxSweepTest extends TestCase
             '/admin/anggota', '/admin/kapal', '/admin/surat-rekomendasi', '/admin/jadwal-pembelian',
             '/admin/penerimaan-bbm', '/admin/persediaan-stok', '/admin/batas-pasokan',
             '/admin/berita', '/admin/pengaturan', '/admin/aktivitas-admin',
-            '/dokumen/surat/' . $suratA->id, '/laporan/export?jenis=anggota',
-            '/laporan/cetak?jenis=persediaan', '/anggota',
+            '/dokumen/surat/' . $suratA->id, '/laporan/export?jenis=kapal',
+            '/laporan/cetak?jenis=penyaluran', '/anggota',
         ] as $uri) {
             $this->actingAs($finance)->get($uri)->assertForbidden();
         }
-        $this->actingAs($finance)->get('/admin/laporan?jenis=anggota')
+        $this->actingAs($finance)->get('/admin/laporan?jenis=kapal')
             ->assertOk()
             ->assertSee('tidak memiliki izin');
 

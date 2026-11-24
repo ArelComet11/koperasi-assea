@@ -28,12 +28,12 @@ class Pengurus extends Model
     ];
 
     public const TEMA_OPSI = [
-        'otomatis' => 'Otomatis sesuai Level',
-        'emas_eksklusif' => 'Biru Royal & Aura Emas (Pimpinan)',
-        'biru_tua' => 'Biru Tua Elegan (Pengurus Inti)',
-        'biru_cerah' => 'Biru Cerah Modern (Manajer)',
-        'biru_teal' => 'Biru Teal (Seksi / Staf)',
-        'hijau_koperasi' => 'Hijau Koperasi Eksklusif',
+        'otomatis' => 'Otomatis sesuai Level (Tema Hijau Koperasi)',
+        'hijau_eksklusif' => 'Hijau Zamrud & Aura Emas (Pimpinan)',
+        'hijau_tua' => 'Hijau Tua Elegan (Pengurus Inti)',
+        'hijau_cerah' => 'Hijau Koperasi Cerah (Manajer)',
+        'hijau_teal' => 'Hijau Zamrud Lembut (Seksi / Staf)',
+        'biru_navy' => 'Biru Navy Klasik (Opsional)',
     ];
 
     protected $fillable = ['nama', 'jabatan', 'level', 'tema_pangkat', 'foto', 'foto_transparan', 'urutan', 'tampil'];
@@ -70,23 +70,7 @@ class Pengurus extends Model
 
     public function gradasiLatar(): string
     {
-        $tema = $this->tema_pangkat ?: 'otomatis';
-        if ($tema === 'otomatis') {
-            $tema = match ((int) $this->level) {
-                1 => 'emas_eksklusif',
-                2 => 'biru_tua',
-                3 => 'biru_cerah',
-                default => 'biru_teal',
-            };
-        }
-
-        return match ($tema) {
-            'emas_eksklusif' => 'radial-gradient(circle at 50% 30%, #3b82d6 0%, #1c53a8 52%, #0e2a5c 88%, #2e240c 100%)',
-            'biru_tua' => 'radial-gradient(circle at 50% 30%, #2f69be 0%, #174087 58%, #0c224d 100%)',
-            'biru_cerah' => 'radial-gradient(circle at 50% 30%, #3384de 0%, #1655a8 58%, #0c2d63 100%)',
-            'hijau_koperasi' => 'radial-gradient(circle at 50% 30%, #14a65e 0%, #076b3d 58%, #053820 100%)',
-            default => 'radial-gradient(circle at 50% 30%, #2484bd 0%, #125285 58%, #0a2a4d 100%)',
-        };
+        return 'radial-gradient(circle at 50% 28%, #16ad62 0%, #078B4B 52%, #053d24 100%)';
     }
 
     public function isFotoTransparan(): bool

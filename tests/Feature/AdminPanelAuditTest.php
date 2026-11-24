@@ -442,18 +442,18 @@ class AdminPanelAuditTest extends TestCase
             ->assertHasNoTableActionErrors();
         $this->assertNull(\App\Filament\Admin\Resources\TagihanResource::getNavigationBadge());
 
-        // #5 Penerimaan backdate sinkron antara Laporan Penerimaan & Laporan Persediaan
+        // #5 Penerimaan backdate mencatat tanggal mutasi stok sesuai tanggal penerimaan
         $bulanLalu = now()->subMonth()->startOfMonth()->addDays(4);
-        app(\App\Services\PenerimaanService::class)->catat([
+        $penerimaanLalu = app(\App\Services\PenerimaanService::class)->catat([
             'tanggal_penerimaan' => $bulanLalu->toDateString(),
             'nama_pemasok' => 'Pertamina Bulan Lalu',
             'liter' => 4000,
         ], $admin);
-        $fLalu = ['dari' => $bulanLalu->copy()->startOfMonth()->toDateString(), 'sampai' => $bulanLalu->copy()->endOfMonth()->toDateString()];
-        $lapTerima = app(LaporanService::class)->bangun('penerimaan', $fLalu);
-        $lapStok = app(LaporanService::class)->bangun('persediaan', $fLalu);
-        $this->assertEquals(4000.0, $lapTerima['ringkasan']['Total penerimaan (liter)']);
-        $this->assertEquals(4000.0, $lapStok['rows'][1][1]);
+        $mutasiLalu = \App\Models\MutasiStok::where('referensi_id', $penerimaanLalu->id)
+            ->where('jenis', \App\Enums\JenisMutasi::Penerimaan->value)
+            ->firstOrFail();
+        $this->assertSame($bulanLalu->toDateString(), $mutasiLalu->tanggal->toDateString());
+        $this->assertEquals(4000.0, (float) $mutasiLalu->delta_fisik);
 
         // #6 LaporanExport menetralkan Excel formula injection
         $export = new \App\Exports\LaporanExport([

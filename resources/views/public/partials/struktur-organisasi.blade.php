@@ -16,7 +16,7 @@
         <p class="eyebrow">Kepengurusan</p>
         <h2 class="mt-1 text-2xl font-black uppercase tracking-tight text-brand-dark sm:text-3xl lg:text-[2.1rem] lg:leading-[1.15]">
             STRUKTUR ORGANISASI
-            <span class="block text-[#0b2342]">{{ $judulStruktur }}</span>
+            <span class="block text-brand">{{ $judulStruktur }}</span>
         </h2>
         <div class="mx-auto mt-3 h-1 w-20 rounded-full bg-gold"></div>
     </div>
@@ -27,7 +27,7 @@
         <svg class="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" data-org-svg aria-hidden="true">
             <defs>
                 <marker id="so-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-                    <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#1e293b"/>
+                    <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#075B37"/>
                 </marker>
             </defs>
             <g data-org-lines></g>
@@ -94,7 +94,7 @@
                 <div>
                     <div class="mb-4 flex items-center justify-center gap-3">
                         <span class="h-px flex-1 bg-gradient-to-r from-transparent to-[#d4af37]/70"></span>
-                        <span class="rounded-full border border-[#d4af37]/70 bg-[#142642] px-3.5 py-1 text-[11px] font-bold uppercase tracking-widest text-[#f5cf5b]">
+                        <span class="rounded-full border border-[#e5b51b]/80 bg-brand-dark px-3.5 py-1 text-[11px] font-bold uppercase tracking-widest text-[#f5cf5b]">
                             {{ \App\Models\Pengurus::LEVEL_RINGKAS[$lvlNum] }}
                         </span>
                         <span class="h-px flex-1 bg-gradient-to-l from-transparent to-[#d4af37]/70"></span>

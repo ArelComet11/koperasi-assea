@@ -46,9 +46,23 @@ class LaporanTest extends TestCase
         $sal = app(LaporanService::class)->bangun('penyaluran');
         $this->assertSame(500.0, $sal['ringkasan']['Total liter disalurkan']);
 
-        $stok = collect(app(LaporanService::class)->bangun('persediaan')['rows'])->keyBy(0);
-        $this->assertSame(9500.0, $stok['Stok fisik akhir'][1]);
-        $this->assertFalse($stok->has('Stok dialokasikan (akhir)'));
+        $kap = app(LaporanService::class)->bangun('kapal');
+        $this->assertSame(1, $kap['ringkasan']['Total kapal']);
+        $this->assertSame(500.0, $kap['rows'][0][6]);
+    }
+
+    public function test_laporan_yang_dihapus_tidak_lagi_tersedia(): void
+    {
+        $admin = $this->admin();
+        $this->assertSame(['kapal', 'surat', 'penyaluran', 'transaksi', 'keuangan'], array_keys(LaporanService::JENIS));
+
+        foreach (['anggota', 'penerimaan', 'persediaan', 'stok_harian'] as $dihapus) {
+            $this->actingAs($admin)->get('/laporan/export?jenis=' . $dihapus)->assertForbidden();
+            $this->actingAs($admin)->get('/laporan/cetak?jenis=' . $dihapus)->assertForbidden();
+            $this->actingAs($admin)->get('/admin/laporan?jenis=' . $dihapus)
+                ->assertOk()
+                ->assertSee('Anda tidak memiliki izin untuk membuka jenis laporan tersebut.');
+        }
     }
 
     public function test_export_excel_dan_cetak(): void
@@ -60,6 +74,80 @@ class LaporanTest extends TestCase
         $this->assertStringContainsString('spreadsheetml', (string) $res->headers->get('content-type'));
 
         $this->actingAs($this->admin())->get('/laporan/cetak?jenis=keuangan')->assertOk()->assertSee('Laporan Keuangan');
+
+        // Verifikasi struktur visual XLSX Laporan Kapal (kop SPBUN, header hijau di baris 11, tanpa freezePane)
+        $lap = app(LaporanService::class)->bangun('kapal');
+        $raw = \Maatwebsite\Excel\Facades\Excel::raw(new \App\Exports\LaporanExport($lap), \Maatwebsite\Excel\Excel::XLSX);
+        $tmp = storage_path('framework/testing/cek-laporan-kapal.xlsx');
+        @mkdir(dirname($tmp), 0777, true);
+        file_put_contents($tmp, $raw);
+        try {
+            $wb = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmp);
+            $ws = $wb->getActiveSheet();
+            $this->assertNull($ws->getFreezePane());
+            $this->assertSame('LAPORAN KAPAL', $ws->getCell('A1')->getValue());
+            $this->assertSame('SPBUN : KSU ASSEA LORGAN MANDIRI', $ws->getCell('A2')->getValue());
+            $this->assertSame('NO SPBUN : 18.208.032', $ws->getCell('A3')->getValue());
+            $this->assertSame('KODE', $ws->getCell('A11')->getValue());
+            $this->assertSame('1CE836', $ws->getStyle('A11')->getFill()->getStartColor()->getRGB());
+            $this->assertNotSame('1CE836', $ws->getStyle('A12')->getFill()->getStartColor()->getRGB());
+        } finally {
+            @unlink($tmp);
+        }
+
+        // Verifikasi struktur visual XLSX & cetak Laporan Surat Rekomendasi (format Realisasi Harian 1..31)
+        $this->actingAs($this->admin())->get('/laporan/cetak?jenis=surat')
+            ->assertOk()
+            ->assertSee('NO LP')
+            ->assertSee('REALISASI')
+            ->assertSee('Total Vs Rekom');
+
+        $lapSurat = app(LaporanService::class)->bangun('surat');
+        $rawSurat = \Maatwebsite\Excel\Facades\Excel::raw(new \App\Exports\LaporanSuratRekomendasiExport($lapSurat), \Maatwebsite\Excel\Excel::XLSX);
+        $tmpSurat = storage_path('framework/testing/cek-laporan-surat.xlsx');
+        file_put_contents($tmpSurat, $rawSurat);
+        try {
+            $wb = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpSurat);
+            $this->assertSame(1, $wb->getSheetCount());
+            $ws = $wb->getActiveSheet();
+            $this->assertNull($ws->getFreezePane());
+            $this->assertSame('NO LP', $ws->getCell('A1')->getValue());
+            $this->assertSame('18208032', (string) $ws->getCell('C1')->getValue());
+            $this->assertSame('KSU ASSEA LORGAN MANDIRI', $ws->getCell('C2')->getValue());
+            $this->assertSame('Jl. Babalan Gg. Tenggiri No. 45', $ws->getCell('C3')->getValue());
+            $this->assertSame('REALISASI', $ws->getCell('A4')->getValue());
+            $this->assertSame('Penjualan', $ws->getCell('D6')->getValue());
+            $this->assertSame('NO', $ws->getCell('A7')->getValue());
+            $this->assertSame('Nama', $ws->getCell('B7')->getValue());
+            $this->assertSame('Nama Kapal', $ws->getCell('C7')->getValue());
+            $this->assertSame('No Rekom', $ws->getCell('D7')->getValue());
+            $this->assertSame('Vol Rekom', $ws->getCell('E7')->getValue());
+            $this->assertSame('Penyaluran', $ws->getCell('F7')->getValue());
+            $this->assertSame(1, (int) $ws->getCell('F8')->getValue());
+            $this->assertSame(31, (int) $ws->getCell('AJ8')->getValue());
+            $this->assertSame('Total', $ws->getCell('AK7')->getValue());
+            $this->assertSame('Total Vs Rekom', $ws->getCell('AL7')->getValue());
+
+            // Nilai penyaluran 500 L tercatat tepat di kolom tanggal hari ini; Vol Rekom 1000 -> Total Vs Rekom -500
+            $hariCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + now()->day);
+            $this->assertEquals(1000.0, (float) $ws->getCell('E9')->getValue());
+            $this->assertEquals(500.0, (float) $ws->getCell("{$hariCol}9")->getValue());
+            $this->assertEquals(500.0, (float) $ws->getCell('AK9')->getCalculatedValue());
+            $this->assertEquals(-500.0, (float) $ws->getCell('AL9')->getCalculatedValue());
+
+            // Baris Total bawah (row 10)
+            $this->assertSame('Total', $ws->getCell('A10')->getValue());
+            $this->assertEquals(500.0, (float) $ws->getCell("{$hariCol}10")->getCalculatedValue());
+            $this->assertEquals(500.0, (float) $ws->getCell('AK10')->getCalculatedValue());
+            $this->assertEquals(-500.0, (float) $ws->getCell('AL10')->getCalculatedValue());
+        } finally {
+            @unlink($tmpSurat);
+        }
+
+        // Verifikasi multi-bulan menghasilkan 1 worksheet per bulan
+        $lapMulti = app(LaporanService::class)->bangun('surat', ['dari' => '2026-01-01', 'sampai' => '2026-03-31']);
+        $exportMulti = new \App\Exports\LaporanSuratRekomendasiExport($lapMulti);
+        $this->assertCount(3, $exportMulti->sheets());
     }
 
     public function test_finance_hanya_boleh_laporan_keuangan_dan_transaksi(): void
@@ -67,7 +155,7 @@ class LaporanTest extends TestCase
         $fin = $this->finance();
         $this->assertSame(['transaksi', 'keuangan'], array_keys(LaporanService::jenisUntuk($fin)));
 
-        $this->actingAs($fin)->get('/laporan/export?jenis=anggota')->assertForbidden();
+        $this->actingAs($fin)->get('/laporan/export?jenis=kapal')->assertForbidden();
         $this->actingAs($fin)->get('/laporan/export?jenis=keuangan')->assertOk();
     }
 
