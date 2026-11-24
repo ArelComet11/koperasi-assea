@@ -69,6 +69,12 @@
     </div>
 </section>
 
+@if($strukturPengurus->isNotEmpty())
+<section class="container-x py-14">
+    @include('public.partials.struktur-organisasi', ['strukturPengurus' => $strukturPengurus])
+</section>
+@endif
+
 <section class="container-x py-14">
     <div class="flex items-end justify-between gap-4" data-reveal>
         <div><p class="eyebrow">Berita</p><h2 class="section-title mt-1">Berita dan informasi terbaru</h2><div class="gold-rule"></div></div>

@@ -18,19 +18,10 @@
         <p class="rounded-xl bg-white p-6 text-sm text-ink/70">Informasi profil sedang disiapkan oleh pengurus koperasi.</p>
     @endif
 
-    @if($pengurus->isNotEmpty())
-        <section data-reveal>
-            <h2 class="text-xl font-extrabold text-brand-dark">Struktur Organisasi</h2><div class="gold-rule"></div>
-            <div class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                @foreach($pengurus as $p)
-                    <div class="card text-center">
-                        @if($p->foto)<img src="{{ asset('storage/' . $p->foto) }}" alt="{{ $p->nama }}" loading="lazy" class="mx-auto h-24 w-24 rounded-full object-cover">
-                        @else<div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-brand/10 text-brand"><i data-lucide="users" class="h-9 w-9"></i></div>@endif
-                        <div class="mt-3 font-bold text-brand-dark">{{ $p->nama }}</div><div class="text-sm text-ink/70">{{ $p->jabatan }}</div>
-                    </div>
-                @endforeach
-            </div>
-        </section>
+    @if($strukturPengurus->isNotEmpty())
+        <div class="pt-4">
+            @include('public.partials.struktur-organisasi', ['strukturPengurus' => $strukturPengurus])
+        </div>
     @endif
 </div>
 @endsection
