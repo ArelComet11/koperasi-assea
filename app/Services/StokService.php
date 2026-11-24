@@ -30,31 +30,24 @@ class StokService
         return StokBbm::query()->lockForUpdate()->findOrFail(1);
     }
 
-    public function catat(JenisMutasi $jenis, string $deltaFisik, string $deltaAlokasi, ?Model $referensi, ?string $keterangan, ?User $user, ?CarbonInterface $tanggal = null): MutasiStok
+    public function catat(JenisMutasi $jenis, string $deltaFisik, string $deltaAlokasi = '0', ?Model $referensi = null, ?string $keterangan = null, ?User $user = null, ?CarbonInterface $tanggal = null): MutasiStok
     {
         $s = $this->saldo();
         $fisik = Dec::add($s->stok_fisik, $deltaFisik);
-        $alokasi = Dec::add($s->stok_dialokasikan, $deltaAlokasi);
 
         if (Dec::lt($fisik, 0)) {
             throw new BisnisException('Stok fisik tidak mencukupi untuk tindakan ini.');
         }
-        if (Dec::lt($alokasi, 0)) {
-            throw new BisnisException('Stok yang dialokasikan tidak boleh bernilai negatif.');
-        }
-        if (Dec::gt($alokasi, $fisik)) {
-            throw new BisnisException('Stok yang dialokasikan tidak boleh melebihi stok fisik.');
-        }
 
-        $s->forceFill(['stok_fisik' => $fisik, 'stok_dialokasikan' => $alokasi])->save();
+        $s->forceFill(['stok_fisik' => $fisik, 'stok_dialokasikan' => '0.00'])->save();
 
         return MutasiStok::create([
             'tanggal' => $tanggal ?? now(),
             'jenis' => $jenis->value,
             'delta_fisik' => Dec::n($deltaFisik),
-            'delta_alokasi' => Dec::n($deltaAlokasi),
+            'delta_alokasi' => '0.00',
             'saldo_fisik' => $fisik,
-            'saldo_alokasi' => $alokasi,
+            'saldo_alokasi' => '0.00',
             'referensi_type' => $referensi?->getMorphClass(),
             'referensi_id' => $referensi?->getKey(),
             'keterangan' => $keterangan ? mb_substr($keterangan, 0, 255) : null,
@@ -88,13 +81,11 @@ class StokService
     {
         $s = StokBbm::query()->first();
         $fisik = Dec::n($s?->stok_fisik);
-        $alokasi = Dec::n($s?->stok_dialokasikan);
         $jumlah = fn (array $jenis) => Dec::n(MutasiStok::query()->whereIn('jenis', $jenis)->sum('delta_fisik'));
 
         return [
             'fisik' => $fisik,
-            'dialokasikan' => $alokasi,
-            'tersedia' => Dec::sub($fisik, $alokasi),
+            'tersedia' => $fisik,
             'awal' => $jumlah([JenisMutasi::SaldoAwal->value]),
             'penerimaan' => $jumlah([JenisMutasi::Penerimaan->value, JenisMutasi::PembatalanPenerimaan->value]),
             'penyaluran' => Dec::sub('0', $jumlah([JenisMutasi::Penyaluran->value])),
@@ -103,7 +94,7 @@ class StokService
 
     public function tersedia(): string
     {
-        return $this->ringkasan()['tersedia'];
+        return $this->ringkasan()['fisik'];
     }
 
     /** Pemeriksaan konsistensi saldo terhadap ledger. */
@@ -111,12 +102,10 @@ class StokService
     {
         $s = StokBbm::query()->first();
         $sumFisik = Dec::n(MutasiStok::query()->sum('delta_fisik'));
-        $sumAlokasi = Dec::n(MutasiStok::query()->sum('delta_alokasi'));
 
         return [
             'fisik_saldo' => Dec::n($s?->stok_fisik), 'fisik_ledger' => $sumFisik,
-            'alokasi_saldo' => Dec::n($s?->stok_dialokasikan), 'alokasi_ledger' => $sumAlokasi,
-            'konsisten' => Dec::eq($s?->stok_fisik, $sumFisik) && Dec::eq($s?->stok_dialokasikan, $sumAlokasi),
+            'konsisten' => Dec::eq($s?->stok_fisik, $sumFisik),
         ];
     }
 

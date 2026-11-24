@@ -30,6 +30,7 @@ class PublicController extends Controller
             ],
             'berita' => Berita::query()->terbit()->with('kategori')->latest('published_at')->take(3)->get(),
             'galeri' => Galeri::query()->where('tampil', true)->orderBy('urutan')->latest('id')->take(6)->get(),
+            'strukturPengurus' => Pengurus::strukturTerurut(),
             'kuota' => $this->p->get('kuota.surat_bulanan'),
         ]);
     }
@@ -37,6 +38,7 @@ class PublicController extends Controller
     public function profil()
     {
         $bagian = fn (string $k) => Sanitizer::html($this->p->get($k));
+        $struktur = Pengurus::strukturTerurut();
 
         return view('public.profil', [
             'sejarah' => $bagian('koperasi.sejarah'),
@@ -44,7 +46,8 @@ class PublicController extends Controller
             'misi' => $bagian('koperasi.misi'),
             'tujuan' => $bagian('koperasi.tujuan'),
             'legalitas' => $bagian('koperasi.legalitas'),
-            'pengurus' => Pengurus::query()->where('tampil', true)->orderBy('urutan')->get(),
+            'pengurus' => $struktur->flatten(1),
+            'strukturPengurus' => $struktur,
         ]);
     }
 

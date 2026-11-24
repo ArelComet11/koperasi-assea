@@ -99,7 +99,7 @@ class PenerimaanService
             $pas = $this->pasokan->baris($p->periode);
             $this->stok->saldo();
             if (Dec::gt($p->liter, $this->stok->tersedia())) {
-                throw new BisnisException('Penerimaan tidak dapat dibatalkan karena sebagian BBM sudah dialokasikan atau disalurkan (stok tersedia ' . Format::liter($this->stok->tersedia()) . ').');
+                throw new BisnisException('Penerimaan tidak dapat dibatalkan karena sebagian BBM sudah disalurkan (stok fisik ' . Format::liter($this->stok->tersedia()) . ').');
             }
 
             $this->stok->catat(JenisMutasi::PembatalanPenerimaan, Dec::sub('0', $p->liter), '0', $p, 'Pembatalan ' . $p->nomor_penerimaan, $user);

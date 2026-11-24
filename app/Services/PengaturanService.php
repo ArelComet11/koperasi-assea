@@ -17,6 +17,8 @@ class PengaturanService
     {
         return [
             'koperasi.nama' => ['string', 'Identitas', 'Nama koperasi', 'Koperasi Serba Usaha Assea Lorgan Mandiri'],
+            'koperasi.no_spbun' => ['string', 'Identitas', 'Nomor SPBUN', '18.208.032'],
+            'koperasi.nama_ketua' => ['string', 'Identitas', 'Nama Ketua (penandatangan laporan)', 'SYAFRIYANI'],
             'koperasi.logo' => ['file', 'Identitas', 'Logo (kosongkan untuk memakai logo resmi bawaan)', null],
             'koperasi.deskripsi' => ['text', 'Identitas', 'Deskripsi singkat', 'Koperasi yang melayani penerimaan dan penyaluran BBM kepada anggota sesuai ketentuan dan surat rekomendasi.'],
             'koperasi.alamat' => ['text', 'Kontak', 'Alamat', null],

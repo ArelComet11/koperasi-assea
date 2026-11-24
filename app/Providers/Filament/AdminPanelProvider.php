@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('images/logo-koperasi.png'))
             ->defaultAvatarProvider(AvatarLokal::class)
             ->spa()
-            ->spaUrlExceptions(fn (): array => [url('/dokumen/*'), url('/cetak/*'), url('/laporan/*')])
+            ->spaUrlExceptions(fn (): array => [url('/dokumen/*'), url('/cetak/*'), url('/laporan/*'), url('/template/*')])
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'primary' => Color::hex('#078B4B'),

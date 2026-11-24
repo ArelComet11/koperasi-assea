@@ -47,6 +47,21 @@
     .prose-koperasi img { @apply h-auto max-w-full rounded-xl; }
     .prose-koperasi table { @apply w-full border-collapse text-sm; }
     .prose-koperasi th, .prose-koperasi td { @apply border border-brand/20 px-3 py-2 text-left; }
+
+    /* Bagan Struktur Organisasi — Tema Hijau Koperasi & Emas */
+    .so-ring-outer {
+        background: linear-gradient(145deg, #f9e699 0%, #c69224 32%, #f4d672 58%, #9a6c12 85%, #e8c760 100%);
+        box-shadow: 0 10px 24px -8px rgba(7, 91, 55, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.7);
+    }
+    .so-ring-inner {
+        background: #064428;
+        box-shadow: inset 0 0 0 1.5px rgba(229, 181, 27, 0.9);
+    }
+    .so-pill {
+        background: linear-gradient(180deg, #077041 0%, #053d24 100%);
+        border: 1.5px solid #e5b51b;
+        box-shadow: 0 6px 14px -4px rgba(5, 61, 36, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    }
 }
 
 @media (prefers-reduced-motion: no-preference) {

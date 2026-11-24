@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <x-filament::section>
         <div style="font-size:.9rem;line-height:1.6">
-            <p><strong>Stok tersedia = stok fisik − stok dialokasikan.</strong> Stok fisik hanya berkurang saat BBM benar-benar disalurkan; persetujuan pengajuan hanya mencadangkan (mengalokasikan) stok.</p>
+            <p><strong>Stok fisik = saldo awal + penerimaan − penyaluran.</strong> Stok fisik bertambah saat penerimaan BBM dicatat dan berkurang saat penyaluran BBM aktual dicatat.</p>
             <p style="margin-top:.5rem">Setiap perubahan tercatat pada
                 <a href="{{ $urlLedger }}" style="color:#078B4B;font-weight:700;text-decoration:underline">Riwayat Pergerakan Stok</a>.
                 Pemeriksaan konsistensi saldo terhadap ledger:

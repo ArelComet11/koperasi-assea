@@ -47,9 +47,9 @@ class AlurPengajuanTest extends TestCase
         $p->refresh();
 
         $r = app(StokService::class)->ringkasan();
-        $this->assertSame('20000.00', $r['fisik']);          // stok fisik TIDAK berkurang saat disetujui
-        $this->assertSame('500.00', $r['dialokasikan']);
-        $this->assertSame('19500.00', $r['tersedia']);
+        $this->assertSame('20000.00', $r['fisik']);          // stok fisik tidak berubah saat disetujui (tanpa alokasi stok)
+        $this->assertSame('20000.00', $r['tersedia']);
+        $this->assertArrayNotHasKey('dialokasikan', $r);
         $this->assertSame('6800.00', $p->harga_per_liter);
         $this->assertSame('3400000.00', $p->total_tagihan);   // 500 x Rp6.800
         $this->assertSame(today()->startOfMonth()->toDateString(), $p->periode_kuota->toDateString());
@@ -69,7 +69,6 @@ class AlurPengajuanTest extends TestCase
         $this->assertSame(StatusPengajuan::Selesai, $p->status);
         $r = app(StokService::class)->ringkasan();
         $this->assertSame('19500.00', $r['fisik']);
-        $this->assertSame('0.00', $r['dialokasikan']);
         $this->assertTrue(app(StokService::class)->verifikasi()['konsisten']);
     }
 
@@ -107,7 +106,9 @@ class AlurPengajuanTest extends TestCase
             app(PengajuanService::class)->setujui($p, $admin);
         }
 
-        $this->assertSame('2000.00', app(StokService::class)->ringkasan()['dialokasikan']);
+        $this->assertSame('0.00', app(\App\Services\KuotaService::class)->sisa($s1));
+        $this->assertSame('0.00', app(\App\Services\KuotaService::class)->sisa($s2));
+        $this->assertSame('20000.00', app(StokService::class)->ringkasan()['fisik']);
     }
 
     public function test_stok_tersedia_tidak_cukup_ditolak(): void
@@ -130,10 +131,9 @@ class AlurPengajuanTest extends TestCase
 
         $this->expectException(BisnisException::class);
         app(PengajuanService::class)->setujui(PengajuanPembelian::find($p->id), $admin);
-        $this->assertSame('100.00', app(StokService::class)->ringkasan()['dialokasikan']);
     }
 
-    public function test_tolak_wajib_alasan_dan_tidak_mengalokasikan(): void
+    public function test_tolak_wajib_alasan_dan_tidak_mengubah_stok_atau_kuota(): void
     {
         $this->isiStok(20000);
         [$a, $k, $s, $u] = $this->buatAnggota();
@@ -151,11 +151,11 @@ class AlurPengajuanTest extends TestCase
         app(PengajuanService::class)->tolak($p, $admin, 'Dokumen tidak lengkap');
         $p->refresh();
         $this->assertSame(StatusPengajuan::Ditolak, $p->status);
-        $this->assertSame('0.00', app(StokService::class)->ringkasan()['dialokasikan']);
+        $this->assertSame('20000.00', app(StokService::class)->ringkasan()['fisik']);
         $this->assertSame('1000.00', app(\App\Services\KuotaService::class)->sisa($s));
     }
 
-    public function test_batalkan_melepas_alokasi_tanpa_mengubah_stok_fisik(): void
+    public function test_batalkan_melepas_kuota_tanpa_mengubah_stok_fisik(): void
     {
         $this->isiStok(20000);
         [$a, $k, $s, $u] = $this->buatAnggota();
@@ -169,7 +169,6 @@ class AlurPengajuanTest extends TestCase
         $r = app(StokService::class)->ringkasan();
 
         $this->assertSame('20000.00', $r['fisik']);
-        $this->assertSame('0.00', $r['dialokasikan']);
         $this->assertSame('1000.00', app(\App\Services\KuotaService::class)->sisa($s));
         $this->assertSame(StatusPengajuan::Dibatalkan, $p->fresh()->status);
         $this->assertTrue(app(StokService::class)->verifikasi()['konsisten']);
@@ -226,7 +225,6 @@ class AlurPengajuanTest extends TestCase
         app(PenyaluranService::class)->catat($p, 400, $admin);
         $r = app(StokService::class)->ringkasan();
         $this->assertSame('19600.00', $r['fisik']);
-        $this->assertSame('0.00', $r['dialokasikan']);      // sisa 100 dilepas
         $this->assertSame('2720000.00', $p->fresh()->tagihan->total); // 400 x 6800, belum lunas -> disesuaikan
         $this->assertSame('600.00', app(\App\Services\KuotaService::class)->sisa($s)); // hanya 400 terpakai
         $this->assertTrue(app(StokService::class)->verifikasi()['konsisten']);

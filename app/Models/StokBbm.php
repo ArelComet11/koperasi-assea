@@ -18,6 +18,6 @@ class StokBbm extends Model
 
     public function getStokTersediaAttribute(): string
     {
-        return Dec::sub($this->stok_fisik, $this->stok_dialokasikan);
+        return Dec::n($this->stok_fisik);
     }
 }

@@ -42,13 +42,13 @@ class Aksi
                 $sisaKuota = $r->suratRekomendasi ? app(KuotaService::class)->sisa($r->suratRekomendasi) : '0';
 
                 return sprintf(
-                    'Diminta %s. Sisa kuota surat bulan ini: %s. Stok tersedia: %s. Sisa batas pasokan: %s. Harga dikunci saat persetujuan.',
+                    'Diminta %s. Sisa kuota surat bulan ini: %s. Stok fisik: %s. Sisa batas pasokan: %s. Harga dikunci saat persetujuan.',
                     Format::liter($r->liter_diminta), Format::liter($sisaKuota),
                     Format::liter(app(StokService::class)->tersedia()), Format::liter(app(PasokanService::class)->ringkasan()['sisa_alokasi'])
                 );
             })
             ->action(function (PengajuanPembelian $record) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->setujui($record, Otorisasi::userWajib()), 'Pengajuan disetujui. Stok dialokasikan dan tagihan dibuat.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->setujui($record, Otorisasi::userWajib()), 'Pengajuan disetujui dan tagihan dibuat.');
                 $record->refresh();
             });
     }
@@ -85,7 +85,7 @@ class Aksi
         return Action::make('salurkan')->label('Catat penyaluran')->icon('heroicon-o-truck')->color('primary')
             ->visible(fn (PengajuanPembelian $r) => $r->status === StatusPengajuan::Disetujui && $r->status_penyaluran === StatusPenyaluran::Belum && self::bisa('penyaluran.manage'))
             ->modalHeading('Catat penyaluran BBM aktual')
-            ->modalDescription('Jumlah aktual tidak boleh melebihi jumlah disetujui. Sisa alokasi dilepas otomatis. Transaksi selesai bila pembayaran sudah lunas.')
+            ->modalDescription('Jumlah aktual tidak boleh melebihi jumlah disetujui. Stok fisik berkurang sesuai jumlah aktual. Transaksi selesai bila pembayaran sudah lunas.')
             ->schema([
                 TextInput::make('liter_aktual')->label('Liter aktual disalurkan')->numeric()->required()->minValue(0.01)->suffix('liter')
                     ->default(fn (PengajuanPembelian $r) => $r->alokasi?->liter_disetujui),
@@ -103,10 +103,10 @@ class Aksi
         return Action::make('batalkan')->label('Batalkan')->icon('heroicon-o-arrow-uturn-left')->color('danger')
             ->visible(fn (PengajuanPembelian $r) => $r->status === StatusPengajuan::Disetujui && $r->status_penyaluran === StatusPenyaluran::Belum && self::bisa('pengajuan.cancel'))
             ->modalHeading('Batalkan pengajuan yang telah disetujui')
-            ->modalDescription('Alokasi stok dan kuota akan dilepas. Stok fisik tidak berubah karena BBM belum keluar.')
+            ->modalDescription('Kuota surat dan batas pasokan akan dikembalikan. Stok fisik tidak berubah karena BBM belum keluar.')
             ->schema([Textarea::make('alasan')->label('Alasan pembatalan')->required()->minLength(3)->maxLength(1000)])
             ->action(function (PengajuanPembelian $record, array $data) {
-                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkan($record, Otorisasi::userWajib(), $data['alasan']), 'Pengajuan dibatalkan dan alokasi dilepas.');
+                Bisnis::jalankan(fn () => app(PengajuanService::class)->batalkan($record, Otorisasi::userWajib(), $data['alasan']), 'Pengajuan dibatalkan.');
                 $record->refresh();
             });
     }

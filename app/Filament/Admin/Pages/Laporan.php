@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Enums\StatusAktif;
-use App\Enums\StatusPenerimaan;
 use App\Enums\StatusPengajuan;
 use App\Enums\StatusTagihan;
 use App\Models\Anggota;
@@ -33,9 +32,8 @@ class Laporan extends Page
     private static function opsiStatus(string $jenis): array
     {
         return match ($jenis) {
-            'anggota', 'kapal' => StatusAktif::opsi(),
+            'kapal' => StatusAktif::opsi(),
             'surat' => ['aktif' => 'Aktif', 'belum_berlaku' => 'Belum berlaku', 'kedaluwarsa' => 'Kedaluwarsa', 'nonaktif' => 'Nonaktif'],
-            'penerimaan' => StatusPenerimaan::opsi(),
             'transaksi' => StatusPengajuan::opsi(),
             'keuangan' => [
                 StatusTagihan::BelumDibayar->value => StatusTagihan::BelumDibayar->getLabel(),
@@ -71,8 +69,8 @@ class Laporan extends Page
             }
         }
 
-        $tampilAnggota = in_array($jenis, ['anggota', 'kapal', 'surat', 'penyaluran', 'transaksi', 'keuangan'], true);
-        $tampilKapal = in_array($jenis, ['kapal', 'surat', 'penyaluran', 'transaksi', 'keuangan'], true);
+        $tampilAnggota = in_array($jenis, ['kapal', 'surat', 'penjualan', 'transaksi', 'keuangan'], true);
+        $tampilKapal = in_array($jenis, ['kapal', 'surat', 'penjualan', 'transaksi', 'keuangan'], true);
         $query = http_build_query(['jenis' => $jenis] + $filter);
 
         return [

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\LaporanExport;
+use App\Exports\LaporanPenjualanExport;
+use App\Exports\LaporanSuratRekomendasiExport;
 use App\Services\AuditService;
 use App\Services\LaporanService;
 use Illuminate\Http\Request;
@@ -16,14 +18,26 @@ class LaporanController extends Controller
         $laporan = $svc->bangun($jenis, $filter);
         AuditService::catat('laporan.diekspor', null, null, ['jenis' => $jenis] + $filter, $laporan['judul']);
 
-        return Excel::download(new LaporanExport($laporan), 'laporan-' . $jenis . '-' . now()->format('Ymd-His') . '.xlsx');
+        $export = match ($jenis) {
+            'surat' => new LaporanSuratRekomendasiExport($laporan),
+            'penjualan' => new LaporanPenjualanExport($laporan),
+            default => new LaporanExport($laporan),
+        };
+
+        return Excel::download($export, 'laporan-' . $jenis . '-' . now()->format('Ymd-His') . '.xlsx');
     }
 
     public function cetak(Request $request, LaporanService $svc)
     {
         [$jenis, $filter] = $this->validasi($request);
+        $laporan = $svc->bangun($jenis, $filter);
+        $view = match ($jenis) {
+            'surat' => 'cetak.laporan-surat',
+            'penjualan' => 'cetak.laporan-penjualan',
+            default => 'cetak.laporan',
+        };
 
-        return view('cetak.laporan', ['laporan' => $svc->bangun($jenis, $filter)]);
+        return view($view, ['laporan' => $laporan]);
     }
 
     /** @return array{0:string,1:array} */

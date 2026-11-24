@@ -90,7 +90,7 @@ class PasokanDanStokTest extends TestCase
         DB::transaction(fn () => app(StokService::class)->catat(\App\Enums\JenisMutasi::Koreksi, '-200', '0', null, 'uji', $this->admin()));
     }
 
-    public function test_batal_penerimaan_ditolak_bila_stok_sudah_dialokasikan(): void
+    public function test_batal_penerimaan_ditolak_bila_stok_sudah_disalurkan(): void
     {
         $p = $this->terima(1000);
         [$a, $k, $s, $u] = $this->buatAnggota();
@@ -101,9 +101,10 @@ class PasokanDanStokTest extends TestCase
         $admin = $this->admin();
         $this->actingAs($admin);
         app(\App\Services\PengajuanService::class)->setujui($pj, $admin);
+        app(\App\Services\PenyaluranService::class)->catat($pj, 900, $admin);
 
         $this->expectException(BisnisException::class);
-        app(PenerimaanService::class)->batalkan($p, $admin, 'Salah input'); // tersedia hanya 100
+        app(PenerimaanService::class)->batalkan($p, $admin, 'Salah input'); // stok fisik tinggal 100
     }
 
     public function test_batal_penerimaan_membuat_entri_pembalik(): void

@@ -47,9 +47,7 @@ class StatistikOperasional extends StatsOverviewWidget
             Stat::make('Menunggu persetujuan', $menunggu)->icon('heroicon-o-clock')->color($menunggu > 0 ? 'warning' : 'success'),
             Stat::make('Total BBM diterima', Format::liter(PenerimaanBbm::query()->where('status', StatusPenerimaan::Terkonfirmasi->value)->sum('liter'))),
             Stat::make('Total BBM tersalurkan', Format::liter(PenyaluranBbm::query()->sum('liter_aktual'))),
-            Stat::make('Stok BBM fisik', Format::liter($stok['fisik']))->icon('heroicon-o-archive-box'),
-            Stat::make('Stok dialokasikan', Format::liter($stok['dialokasikan']))->color('warning'),
-            Stat::make('Stok tersedia', Format::liter($stok['tersedia']))->color('success'),
+            Stat::make('Stok BBM fisik', Format::liter($stok['fisik']))->icon('heroicon-o-archive-box')->color('success'),
         ];
     }
 }

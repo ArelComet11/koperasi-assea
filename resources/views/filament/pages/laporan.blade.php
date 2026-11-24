@@ -59,6 +59,115 @@
             <div class="lp-sum">@foreach($laporan['ringkasan'] as $k => $v)<span>{{ $k }}: <strong>{{ is_float($v) ? number_format($v, 2, ',', '.') : $v }}</strong></span>@endforeach</div>
         @endif
 
+        @if(($laporan['jenis'] ?? null) === 'surat' && ! empty($laporan['bulanan']))
+            @php
+                $fmtAngka = fn ($n) => fmod((float) $n, 1.0) == 0.0 ? number_format((float) $n, 0, ',', '.') : number_format((float) $n, 2, ',', '.');
+            @endphp
+            @foreach($laporan['bulanan'] as $b)
+                <div style="margin-top:1rem;font-weight:700;font-size:.9rem">{{ $b['bulan_label'] }} — Penjualan / Realisasi Penyaluran</div>
+                <div class="lp-wrap">
+                    <table class="lp-t">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">NO</th>
+                                <th rowspan="2">Nama</th>
+                                <th rowspan="2">Nama Kapal</th>
+                                <th rowspan="2">No Rekom</th>
+                                <th rowspan="2">Vol Rekom</th>
+                                <th colspan="31" style="text-align:center">Penyaluran</th>
+                                <th rowspan="2">Total</th>
+                                <th rowspan="2">Total Vs Rekom</th>
+                            </tr>
+                            <tr>
+                                @for($d = 1; $d <= 31; $d++)<th style="text-align:center">{{ $d }}</th>@endfor
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse(array_slice($b['rows'], 0, 300) as $idx => $row)
+                            <tr>
+                                <td>{{ $idx + 1 }}</td>
+                                <td>{{ $row['nama'] }}</td>
+                                <td>{{ $row['nama_kapal'] }}</td>
+                                <td>{{ $row['no_rekom'] }}</td>
+                                <td style="text-align:right">{{ $fmtAngka($row['vol_rekom']) }}</td>
+                                @for($d = 1; $d <= 31; $d++)
+                                    @php $v = $row['harian'][$d] ?? null; @endphp
+                                    <td style="text-align:right">{{ ($v !== null && (float) $v > 0) ? $fmtAngka($v) : '' }}</td>
+                                @endfor
+                                <td style="text-align:right;font-weight:600">{{ $fmtAngka($row['total']) }}</td>
+                                <td style="text-align:right;font-weight:600">{{ $fmtAngka($row['total_vs_rekom']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="38" style="text-align:center;padding:1.5rem;opacity:.7">Tidak ada data pada filter ini.</td></tr>
+                        @endforelse
+                        @if($b['rows'] !== [])
+                            <tr style="font-weight:700;background:rgba(7,139,75,.08)">
+                                <td colspan="4" style="text-align:center">Total</td>
+                                <td style="text-align:right">{{ $fmtAngka($b['total_vol_rekom']) }}</td>
+                                @for($d = 1; $d <= 31; $d++)
+                                    <td style="text-align:right">{{ $fmtAngka($b['total_harian'][$d] ?? 0) }}</td>
+                                @endfor
+                                <td style="text-align:right">{{ $fmtAngka($b['total_penyaluran']) }}</td>
+                                <td style="text-align:right">{{ $fmtAngka($b['total_vs_rekom']) }}</td>
+                            </tr>
+                        @endif
+                        </tbody>
+                    </table>
+                </div>
+                @if(count($b['rows']) > 300)<p style="font-size:.8rem;margin-top:.5rem;opacity:.75">Pratinjau menampilkan 300 baris pertama dari {{ count($b['rows']) }} pada {{ $b['bulan_label'] }}. Export Excel memuat seluruh data.</p>@endif
+            @endforeach
+        @elseif(($laporan['jenis'] ?? null) === 'penjualan' && ! empty($laporan['bulanan']))
+            @php
+                $fmtAngka = fn ($n) => fmod((float) $n, 1.0) == 0.0 ? number_format((float) $n, 0, ',', '.') : number_format((float) $n, 2, ',', '.');
+            @endphp
+            @foreach($laporan['bulanan'] as $b)
+                <div style="margin-top:1rem;font-weight:700;font-size:.9rem">Rekapitulasi Penjualan — {{ $b['bulan_nama'] }} {{ $b['tahun'] }} (M.SOLAR)</div>
+                <div class="lp-wrap">
+                    <table class="lp-t">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">No</th>
+                                <th rowspan="2">Nama</th>
+                                <th rowspan="2">Nama Kapal</th>
+                                <th rowspan="2">No. Rekomendasi</th>
+                                <th colspan="31" style="text-align:center">Tanggal Penjualan</th>
+                                <th rowspan="2">Total</th>
+                            </tr>
+                            <tr>
+                                @for($d = 1; $d <= 31; $d++)<th style="text-align:center">{{ $d }}</th>@endfor
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse(array_slice($b['rows'], 0, 300) as $idx => $row)
+                            <tr>
+                                <td>{{ $idx + 1 }}</td>
+                                <td>{{ $row['nama'] }}</td>
+                                <td>{{ $row['nama_kapal'] }}</td>
+                                <td>{{ $row['no_rekom'] }}</td>
+                                @for($d = 1; $d <= 31; $d++)
+                                    @php $v = $row['harian'][$d] ?? null; @endphp
+                                    <td style="text-align:right">{{ ($v !== null && (float) $v > 0) ? $fmtAngka($v) : '' }}</td>
+                                @endfor
+                                <td style="text-align:right;font-weight:600">{{ $fmtAngka($row['total']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="36" style="text-align:center;padding:1.5rem;opacity:.7">Tidak ada data penjualan pada bulan ini.</td></tr>
+                        @endforelse
+                        @if($b['rows'] !== [])
+                            <tr style="font-weight:700;background:rgba(7,139,75,.08)">
+                                <td colspan="4" style="text-align:center">JUMLAH</td>
+                                @for($d = 1; $d <= 31; $d++)
+                                    <td style="text-align:right">{{ $fmtAngka($b['total_harian'][$d] ?? 0) }}</td>
+                                @endfor
+                                <td style="text-align:right">{{ $fmtAngka($b['total_penjualan']) }}</td>
+                            </tr>
+                        @endif
+                        </tbody>
+                    </table>
+                </div>
+                @if(count($b['rows']) > 300)<p style="font-size:.8rem;margin-top:.5rem;opacity:.75">Pratinjau menampilkan 300 baris pertama dari {{ count($b['rows']) }} pada {{ $b['bulan_nama'] }} {{ $b['tahun'] }}. Export Excel memuat seluruh data.</p>@endif
+            @endforeach
+        @else
         <div class="lp-wrap">
             <table class="lp-t">
                 <thead><tr>@foreach($laporan['headings'] as $h)<th>{{ $h }}</th>@endforeach</tr></thead>
@@ -72,5 +181,6 @@
             </table>
         </div>
         @if(count($laporan['rows']) > 300)<p style="font-size:.8rem;margin-top:.5rem;opacity:.75">Pratinjau menampilkan 300 baris pertama dari {{ count($laporan['rows']) }}. Export Excel memuat seluruh data.</p>@endif
+        @endif
     @endif
 </x-filament-panels::page>
