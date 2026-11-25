@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -188,7 +189,10 @@ class LaporanExport implements FromArray, WithEvents, WithStrictNullComparison, 
                     ]);
                 } else {
                     $sheet->getStyle("A{$firstDataRow}:{$lastCol}{$lastDataRow}")->applyFromArray([
-                        'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical' => Alignment::VERTICAL_CENTER,
+                        ],
                         'borders' => [
                             'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']],
                         ],
@@ -198,7 +202,7 @@ class LaporanExport implements FromArray, WithEvents, WithStrictNullComparison, 
                         $sheet->getRowDimension($r)->setRowHeight(20);
                     }
 
-                    // Format & perataan per kolom berdasarkan judul kolom
+                    // Format angka/teks per kolom berdasarkan judul kolom (semua data rata tengah)
                     foreach ($this->laporan['headings'] as $idx => $heading) {
                         $colLetter = Coordinate::stringFromColumnIndex($idx + 1);
                         $range = "{$colLetter}{$firstDataRow}:{$colLetter}{$lastDataRow}";
@@ -206,17 +210,17 @@ class LaporanExport implements FromArray, WithEvents, WithStrictNullComparison, 
 
                         if (preg_match('/harga|total nilai|total tagihan|pemasukan|\(rp\)/', $h) === 1) {
                             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('"Rp "#,##0');
-                            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                         } elseif (preg_match('/liter|kuota|disetujui|aktual|sisa|\(l\)/', $h) === 1) {
                             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0.##;(#,##0.##);"-"');
-                            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                         } elseif (preg_match('/^jumlah/', $h) === 1) {
                             $sheet->getStyle($range)->getNumberFormat()->setFormatCode('#,##0');
-                            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                        } elseif (preg_match('/^no$|kode|no\.|nomor|tanggal|mulai|sampai|status|override|telepon/', $h) === 1) {
-                            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                        } else {
-                            $sheet->getStyle($range)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                        } elseif (preg_match('/rekomendasi|telepon|no\.|nomor/', $h) === 1) {
+                            for ($r = $firstDataRow; $r <= $lastDataRow; $r++) {
+                                $val = $sheet->getCell("{$colLetter}{$r}")->getValue();
+                                if ($val !== null && $val !== '') {
+                                    $sheet->setCellValueExplicit("{$colLetter}{$r}", (string) $val, DataType::TYPE_STRING);
+                                }
+                            }
                         }
                     }
                 }

@@ -24,8 +24,7 @@ class StokStats extends StatsOverviewWidget
         $s = app(StokService::class)->ringkasan();
 
         return [
-            Stat::make('Stok fisik saat ini', Format::liter($s['fisik']))->icon('heroicon-o-archive-box')->description('Awal + penerimaan − penyaluran')->color('success'),
-            Stat::make('Saldo awal', Format::liter($s['awal'])),
+            Stat::make('Stok fisik saat ini', Format::liter($s['fisik']))->icon('heroicon-o-archive-box')->description('Penerimaan − penyaluran')->color('success'),
             Stat::make('Total penerimaan', Format::liter($s['penerimaan'])),
             Stat::make('Total penyaluran', Format::liter($s['penyaluran'])),
         ];

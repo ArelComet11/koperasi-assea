@@ -22,9 +22,7 @@ class MutasiStok extends Model
             'jenis' => JenisMutasi::class,
             'tanggal' => 'datetime',
             'delta_fisik' => 'decimal:2',
-            'delta_alokasi' => 'decimal:2',
             'saldo_fisik' => 'decimal:2',
-            'saldo_alokasi' => 'decimal:2',
         ];
     }
 

@@ -23,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PengajuanPembelianResource extends Resource
 {
@@ -77,7 +78,8 @@ class PengajuanPembelianResource extends Resource
                 TextEntry::make('kapal.nama_kapal')->label('Kapal'),
                 TextEntry::make('suratRekomendasi.nomor_surat')->label('Surat rekomendasi'),
                 TextEntry::make('tanggal_rencana')->label('Rencana pembelian')->date('d/m/Y')->placeholder('-'),
-                TextEntry::make('catatan')->placeholder('-')->columnSpan(2),
+                TextEntry::make('tujuan')->label('Tujuan')->placeholder('Melaut'),
+                TextEntry::make('catatan')->placeholder('-'),
             ])->columns(3),
             Section::make('Jumlah dan harga')->schema([
                 TextEntry::make('liter_diminta')->label('Diminta')->formatStateUsing($liter),
@@ -110,6 +112,7 @@ class PengajuanPembelianResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', '!=', StatusPengajuan::Selesai->value))
             ->columns([
                 TextColumn::make('nomor_pengajuan')->label('No. pengajuan')->searchable()->sortable(),
                 TextColumn::make('created_at')->label('Diajukan')->dateTime('d/m/Y H:i')->sortable(),
@@ -120,11 +123,12 @@ class PengajuanPembelianResource extends Resource
                 TextColumn::make('harga')->label('Harga/L')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->harga_per_liter ?? $record->harga_estimasi_per_liter))->toggleable(),
                 TextColumn::make('total')->label('Total')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->total_tagihan ?? $record->total_estimasi)),
                 TextColumn::make('tanggal_rencana')->label('Rencana')->date('d/m/Y')->sortable(),
+                TextColumn::make('tujuan')->label('Tujuan')->placeholder('Melaut')->toggleable(),
                 TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('status')->options(StatusPengajuan::opsi()),
+                SelectFilter::make('status')->options(collect(StatusPengajuan::opsi())->except(StatusPengajuan::Selesai->value)->all()),
                 SelectFilter::make('status_pembayaran')->label('Pembayaran')->options(StatusPembayaran::opsi()),
                 SelectFilter::make('status_penyaluran')->label('Penyaluran')->options(StatusPenyaluran::opsi()),
                 SelectFilter::make('anggota_id')->label('Anggota')->relationship('anggota', 'nama_lengkap')->searchable()->preload(),

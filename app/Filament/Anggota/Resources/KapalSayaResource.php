@@ -5,9 +5,11 @@ namespace App\Filament\Anggota\Resources;
 use App\Filament\Anggota\Resources\KapalSayaResource\Pages;
 use App\Filament\Concerns\KhususAnggota;
 use App\Models\Kapal;
+use App\Support\Format;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class KapalSayaResource extends Resource
 {
@@ -24,12 +26,14 @@ class KapalSayaResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('suratRekomendasiTerbaru'))
             ->columns([
                 TextColumn::make('kode_kapal')->label('Kode'),
                 TextColumn::make('nama_kapal')->label('Nama kapal')->searchable(),
-                TextColumn::make('no_registrasi')->label('No. registrasi')->placeholder('-'),
-                TextColumn::make('jenis_kapal')->label('Jenis')->placeholder('-'),
-                TextColumn::make('ukuran_gt')->label('Ukuran (GT)')->placeholder('-'),
+                TextColumn::make('nomor_rekomendasi')->label('Nomor rekomendasi')
+                    ->state(fn (Kapal $record) => $record->suratRekomendasiTerbaru?->nomor_surat ?: $record->no_registrasi)
+                    ->placeholder('-'),
+                TextColumn::make('ukuran_gt')->label('GT')->formatStateUsing(fn ($state) => Format::gt($state))->placeholder('-'),
                 TextColumn::make('status')->badge(),
             ])
             ->defaultSort('nama_kapal');

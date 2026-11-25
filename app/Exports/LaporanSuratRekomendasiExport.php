@@ -3,8 +3,9 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Concerns\WithPreCalculateFormulas;
 
-class LaporanSuratRekomendasiExport implements WithMultipleSheets
+class LaporanSuratRekomendasiExport implements WithMultipleSheets, WithPreCalculateFormulas
 {
     /** @param array{jenis:string,judul:string,periode:string,bulanan:array<int,array<string,mixed>>} $laporan */
     public function __construct(private array $laporan)

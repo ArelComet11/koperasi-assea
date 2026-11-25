@@ -69,7 +69,7 @@ class PenerimaanService
 
             $this->pasokan->tambahPenerimaan($pas, $liter, $melebihi && $override);
             $waktuMutasi = $tanggal->isSameDay(today()) ? now() : $tanggal->copy()->setTimeFrom(now());
-            $this->stok->catat(JenisMutasi::Penerimaan, $liter, '0', $p, 'Penerimaan ' . $p->nomor_penerimaan, $user, $waktuMutasi);
+            $this->stok->catat(JenisMutasi::Penerimaan, $liter, $p, 'Penerimaan ' . $p->nomor_penerimaan, $user, $waktuMutasi);
 
             AuditService::catat('penerimaan.dicatat', $p, null, [
                 'liter' => $liter, 'pemasok' => $p->nama_pemasok, 'override' => $p->override_pasokan,
@@ -102,7 +102,7 @@ class PenerimaanService
                 throw new BisnisException('Penerimaan tidak dapat dibatalkan karena sebagian BBM sudah disalurkan (stok fisik ' . Format::liter($this->stok->tersedia()) . ').');
             }
 
-            $this->stok->catat(JenisMutasi::PembatalanPenerimaan, Dec::sub('0', $p->liter), '0', $p, 'Pembatalan ' . $p->nomor_penerimaan, $user);
+            $this->stok->catat(JenisMutasi::PembatalanPenerimaan, Dec::sub('0', $p->liter), $p, 'Pembatalan ' . $p->nomor_penerimaan, $user);
             $this->pasokan->kurangiPenerimaan($pas, $p->liter);
 
             $p->forceFill([

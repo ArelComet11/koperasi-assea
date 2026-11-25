@@ -87,7 +87,7 @@ class PasokanDanStokTest extends TestCase
         $this->isiStok(100);
 
         $this->expectException(BisnisException::class);
-        DB::transaction(fn () => app(StokService::class)->catat(\App\Enums\JenisMutasi::Koreksi, '-200', '0', null, 'uji', $this->admin()));
+        DB::transaction(fn () => app(StokService::class)->catat(\App\Enums\JenisMutasi::Koreksi, '-200', null, 'uji', $this->admin()));
     }
 
     public function test_batal_penerimaan_ditolak_bila_stok_sudah_disalurkan(): void

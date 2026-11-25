@@ -39,7 +39,7 @@ class DemoSeeder extends Seeder
 
         $kapal = Kapal::create([
             'kode_kapal' => 'KPL-CONTOH-001', 'anggota_id' => $anggota->id, 'nama_kapal' => 'KM Contoh',
-            'nama_pemilik' => $anggota->nama_lengkap, 'jenis_kapal' => 'Kapal nelayan', 'status' => 'aktif',
+            'nama_pemilik' => $anggota->nama_lengkap, 'status' => 'aktif',
         ]);
 
         SuratRekomendasi::create([

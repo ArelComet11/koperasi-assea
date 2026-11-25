@@ -89,6 +89,8 @@ class AnggotaPanelAuditTest extends TestCase
 
         // PengajuanSaya: Create, List, View, dan Batalkan oleh anggota
         Livewire::actingAs($userAnggota)->test(CreatePengajuanSaya::class)
+            ->assertSchemaStateSet(['tujuan' => 'Melaut'])
+            ->assertFormFieldIsDisabled('tujuan')
             ->fillForm([
                 'kapal_id' => $kapal->id,
                 'surat_rekomendasi_id' => $surat->id,
@@ -100,17 +102,21 @@ class AnggotaPanelAuditTest extends TestCase
             ->assertHasNoFormErrors();
 
         $pBaru = \App\Models\PengajuanPembelian::where('catatan', 'Pengajuan dari panel anggota')->firstOrFail();
+        $this->assertSame('Melaut', $pBaru->tujuan);
 
         Livewire::actingAs($userAnggota)->test(ListPengajuanSaya::class)
             ->assertSuccessful()
             ->assertSee('100 L')
             ->assertSee('Rp680.000')
+            ->assertCanSeeTableRecords([$pBaru])
+            ->assertCanNotSeeTableRecords([$pSelesai])
             ->callTableAction('batalkan', $pBaru, ['alasan' => 'Batal uji'])
             ->assertHasNoTableActionErrors();
 
         Livewire::actingAs($userAnggota)->test(ViewPengajuanSaya::class, ['record' => $pSelesai->getRouteKey()])
             ->assertSuccessful()
             ->assertSee('200 L')
+            ->assertSee('Melaut')
             ->assertSee('Rp6.800')
             ->assertSee('Rp1.360.000');
     }

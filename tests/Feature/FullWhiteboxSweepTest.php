@@ -148,7 +148,7 @@ class FullWhiteboxSweepTest extends TestCase
         foreach ([
             '/admin', '/admin/pengajuan-pembelian', '/admin/pengajuan-pembelian/' . $p1->id,
             '/admin/tagihan', '/admin/pembayaran', '/admin/riwayat-harga',
-            '/admin/laporan?jenis=keuangan', '/admin/laporan?jenis=transaksi',
+            '/admin/laporan?jenis=keuangan', '/admin/laporan?jenis=realisasi',
             '/laporan/cetak?jenis=keuangan', '/laporan/export?jenis=keuangan',
             '/cetak/pembayaran/' . $b1->id,
         ] as $uri) {
@@ -159,7 +159,7 @@ class FullWhiteboxSweepTest extends TestCase
             '/admin/penerimaan-bbm', '/admin/persediaan-stok', '/admin/batas-pasokan',
             '/admin/berita', '/admin/pengaturan', '/admin/aktivitas-admin',
             '/dokumen/surat/' . $suratA->id, '/laporan/export?jenis=kapal',
-            '/laporan/cetak?jenis=penyaluran', '/anggota',
+            '/laporan/cetak?jenis=penjualan', '/anggota',
         ] as $uri) {
             $this->actingAs($finance)->get($uri)->assertForbidden();
         }
@@ -179,7 +179,7 @@ class FullWhiteboxSweepTest extends TestCase
             $this->actingAs($userA)->get($uri)->assertOk();
         }
         $this->flushSession();
-        foreach (['/admin', '/laporan/export?jenis=keuangan', '/laporan/cetak?jenis=transaksi'] as $uri) {
+        foreach (['/admin', '/laporan/export?jenis=keuangan', '/laporan/cetak?jenis=realisasi'] as $uri) {
             $this->actingAs($userB)->get($uri)->assertForbidden();
         }
         foreach (['/anggota/pengajuan-saya/' . $p1->id, '/dokumen/surat/' . $suratA->id, '/cetak/pembayaran/' . $b1->id] as $uri) {

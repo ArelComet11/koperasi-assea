@@ -30,6 +30,8 @@ use App\Filament\Admin\Resources\PenerimaanBbmResource\Pages\ListPenerimaan;
 use App\Filament\Admin\Resources\PengajuanPembelianResource\Pages\ListPengajuan;
 use App\Filament\Admin\Resources\PengajuanPembelianResource\Pages\ViewPengajuan;
 use App\Filament\Admin\Resources\PengajuanPembelianResource\RelationManagers\RiwayatRelationManager;
+use App\Filament\Admin\Resources\RiwayatTransaksiResource\Pages\ListRiwayatTransaksi;
+use App\Filament\Admin\Resources\RiwayatTransaksiResource\Pages\ViewRiwayatTransaksi;
 use App\Filament\Admin\Resources\PengaturanResource\Pages\EditPengaturan;
 use App\Filament\Admin\Resources\PengaturanResource\Pages\ListPengaturan;
 use App\Filament\Admin\Resources\PengurusResource\Pages\ManagePengurus;
@@ -160,15 +162,32 @@ class AdminPanelAuditTest extends TestCase
             Livewire::actingAs($admin)->test($page)->assertSuccessful();
         }
 
-        // Pengajuan list & view (previously crashed with 500 + showed 0 L / '-')
+        // Pengajuan list hanya menampilkan yang belum selesai; yang selesai pindah ke Riwayat Transaksi
         Livewire::actingAs($admin)->test(ListPengajuan::class)
             ->assertSuccessful()
             ->assertSee('100 L')
             ->assertSee('Rp6.800')
-            ->assertSee('Rp1.360.000')
+            ->assertSee('Rp1.020.000')
+            ->assertCanSeeTableRecords([$pMenunggu, $pDisetujui])
+            ->assertCanNotSeeTableRecords([$pSelesai])
             ->mountTableAction('setujui', $pMenunggu)->assertSuccessful()
             ->mountTableAction('salurkan', $pDisetujui)->assertSuccessful()
             ->mountTableAction('jadwal', $pDisetujui)->assertSuccessful();
+
+        Livewire::actingAs($admin)->test(ListRiwayatTransaksi::class)
+            ->assertSuccessful()
+            ->assertSee('180 L')
+            ->assertSee('Rp6.800')
+            ->assertSee('Rp1.360.000')
+            ->assertCanSeeTableRecords([$pSelesai])
+            ->assertCanNotSeeTableRecords([$pMenunggu, $pDisetujui]);
+
+        Livewire::actingAs($admin)->test(ViewRiwayatTransaksi::class, ['record' => $pSelesai->getRouteKey()])
+            ->assertSuccessful()
+            ->assertSee('200 L')
+            ->assertSee('180 L')
+            ->assertSee('Rp6.800')
+            ->assertSee('Rp1.360.000');
 
         Livewire::actingAs($admin)->test(ViewPengajuan::class, ['record' => $pSelesai->getRouteKey()])
             ->assertSuccessful()
@@ -184,7 +203,11 @@ class AdminPanelAuditTest extends TestCase
         Livewire::actingAs($admin)->test(ListTagihan::class)->assertSuccessful()->assertSee('150 L')->assertSee('Rp1.020.000');
         Livewire::actingAs($admin)->test(ListPembayaran::class)->assertSuccessful()->assertSee('Rp1.360.000');
         Livewire::actingAs($admin)->test(ManageRiwayatHarga::class)->assertSuccessful()->assertSee('Rp6.800');
-        Livewire::actingAs($admin)->test(ListSuratRekomendasi::class)->assertSuccessful()->assertSee('Aktif');
+        Livewire::actingAs($admin)->test(ListSuratRekomendasi::class)
+            ->assertSuccessful()
+            ->assertSee('Aktif')
+            ->assertSee('Vol Rekom')
+            ->assertSee('1.000 L');
         Livewire::actingAs($admin)->test(ListPengaturan::class)->assertSuccessful()->assertSee('Koperasi Serba Usaha Assea Lorgan Mandiri');
 
         // EditPengaturan for ALL 5 types including numeric (previously crashed TipTap with 500)

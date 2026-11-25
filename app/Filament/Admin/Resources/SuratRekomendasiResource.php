@@ -9,7 +9,6 @@ use App\Filament\Concerns\DenganIzin;
 use App\Models\Anggota;
 use App\Models\Kapal;
 use App\Models\SuratRekomendasi;
-use App\Services\KuotaService;
 use App\Services\PengaturanService;
 use App\Support\Format;
 use App\Support\LencanaCache;
@@ -91,7 +90,7 @@ class SuratRekomendasiResource extends Resource
                             : 'Kapal tidak sesuai dengan anggota pemilik.');
                     }
                 }),
-            TextInput::make('nomor_surat')->required()->maxLength(80)->unique(ignoreRecord: true),
+            TextInput::make('nomor_surat')->label('No. Rekomendasi')->required()->maxLength(80)->unique(ignoreRecord: true),
             DatePicker::make('tanggal_surat'),
             DatePicker::make('berlaku_mulai')->required(),
             DatePicker::make('berlaku_sampai')->required()->afterOrEqual('berlaku_mulai'),
@@ -110,9 +109,9 @@ class SuratRekomendasiResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['anggota', 'kapal', 'kuotaBulanIni']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['anggota', 'kapal']))
             ->columns([
-                TextColumn::make('nomor_surat')->label('Nomor surat')->searchable()->sortable(),
+                TextColumn::make('nomor_surat')->label('No. Rekomendasi')->searchable()->sortable(),
                 TextColumn::make('anggota.nama_lengkap')->label('Anggota')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal')->searchable(),
                 TextColumn::make('berlaku_mulai')->label('Mulai')->date('d/m/Y')->sortable(),
@@ -120,8 +119,9 @@ class SuratRekomendasiResource extends Resource
                 TextColumn::make('status_tampil')->label('Status')->badge()
                     ->formatStateUsing(fn ($state) => ucfirst(str_replace('_', ' ', (string) $state)))
                     ->color(fn ($state) => match ($state) { 'aktif' => 'success', 'belum_berlaku' => 'info', 'kedaluwarsa' => 'danger', default => 'gray' }),
-                TextColumn::make('sisa_kuota')->label('Sisa kuota bulan ini')
-                    ->state(fn (SuratRekomendasi $r) => Format::liter(app(KuotaService::class)->sisa($r))),
+                TextColumn::make('kuota_bulanan_liter')->label('Vol Rekom')
+                    ->formatStateUsing(fn ($state) => Format::liter($state))
+                    ->sortable(),
             ])
             ->defaultSort('berlaku_sampai', 'desc')
             ->filters([

@@ -30,7 +30,7 @@ class SuratSayaResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['kapal', 'kuotaBulanIni']))
             ->columns([
-                TextColumn::make('nomor_surat')->label('Nomor surat')->searchable(),
+                TextColumn::make('nomor_surat')->label('No. Rekomendasi')->searchable(),
                 TextColumn::make('kapal.nama_kapal')->label('Kapal'),
                 TextColumn::make('berlaku_mulai')->label('Berlaku dari')->date('d/m/Y'),
                 TextColumn::make('berlaku_sampai')->label('Berlaku sampai')->date('d/m/Y'),

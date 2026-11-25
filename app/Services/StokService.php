@@ -24,13 +24,13 @@ class StokService
         $this->pastikanTransaksi();
 
         DB::table('stok_bbm')->insertOrIgnore([
-            'id' => 1, 'stok_fisik' => 0, 'stok_dialokasikan' => 0, 'created_at' => now(), 'updated_at' => now(),
+            'id' => 1, 'stok_fisik' => 0, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return StokBbm::query()->lockForUpdate()->findOrFail(1);
     }
 
-    public function catat(JenisMutasi $jenis, string $deltaFisik, string $deltaAlokasi = '0', ?Model $referensi = null, ?string $keterangan = null, ?User $user = null, ?CarbonInterface $tanggal = null): MutasiStok
+    public function catat(JenisMutasi $jenis, string $deltaFisik, ?Model $referensi = null, ?string $keterangan = null, ?User $user = null, ?CarbonInterface $tanggal = null): MutasiStok
     {
         $s = $this->saldo();
         $fisik = Dec::add($s->stok_fisik, $deltaFisik);
@@ -39,15 +39,13 @@ class StokService
             throw new BisnisException('Stok fisik tidak mencukupi untuk tindakan ini.');
         }
 
-        $s->forceFill(['stok_fisik' => $fisik, 'stok_dialokasikan' => '0.00'])->save();
+        $s->forceFill(['stok_fisik' => $fisik])->save();
 
         return MutasiStok::create([
             'tanggal' => $tanggal ?? now(),
             'jenis' => $jenis->value,
             'delta_fisik' => Dec::n($deltaFisik),
-            'delta_alokasi' => '0.00',
             'saldo_fisik' => $fisik,
-            'saldo_alokasi' => '0.00',
             'referensi_type' => $referensi?->getMorphClass(),
             'referensi_id' => $referensi?->getKey(),
             'keterangan' => $keterangan ? mb_substr($keterangan, 0, 255) : null,
@@ -69,7 +67,7 @@ class StokService
             if (MutasiStok::query()->where('jenis', JenisMutasi::SaldoAwal->value)->exists()) {
                 throw new BisnisException('Saldo awal sudah pernah dicatat dan tidak dapat diubah. Gunakan penerimaan atau koreksi.');
             }
-            $m = $this->catat(JenisMutasi::SaldoAwal, $liter, '0', null, 'Saldo awal stok', $user);
+            $m = $this->catat(JenisMutasi::SaldoAwal, $liter, null, 'Saldo awal stok', $user);
             AuditService::catat('stok.saldo_awal', $m, null, ['liter' => $liter], 'Saldo awal stok dicatat', $user);
 
             return $m;

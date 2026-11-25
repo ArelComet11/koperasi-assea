@@ -169,7 +169,10 @@ class LaporanSuratRekomendasiSheet implements FromArray, WithEvents, WithStrictN
                     ]);
                 } else {
                     $sheet->getStyle("A{$firstDataRow}:AL{$lastDataRow}")->applyFromArray([
-                        'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical' => Alignment::VERTICAL_CENTER,
+                        ],
                         'borders' => [
                             'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']],
                         ],
@@ -178,9 +181,13 @@ class LaporanSuratRekomendasiSheet implements FromArray, WithEvents, WithStrictN
                         $sheet->getRowDimension($r)->setRowHeight(19);
                     }
 
-                    $sheet->getStyle("A{$firstDataRow}:A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("B{$firstDataRow}:D{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-                    $sheet->getStyle("E{$firstDataRow}:AL{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                    foreach ($rows as $idx => $item) {
+                        if (! empty($item['no_rekom'])) {
+                            $r = $firstDataRow + $idx;
+                            $sheet->setCellValueExplicit("D{$r}", self::amankanSel((string) $item['no_rekom']), DataType::TYPE_STRING);
+                        }
+                    }
+
                     $sheet->getStyle("E{$firstDataRow}:AK{$lastDataRow}")->getNumberFormat()->setFormatCode('#,##0.##');
                     $sheet->getStyle("AL{$firstDataRow}:AL{$lastDataRow}")->getNumberFormat()->setFormatCode('#,##0.##;-#,##0.##;0');
                 }
@@ -198,8 +205,7 @@ class LaporanSuratRekomendasiSheet implements FromArray, WithEvents, WithStrictN
                         'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']],
                     ],
                 ]);
-                $sheet->getStyle("A{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("E{$totalRow}:AL{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle("A{$totalRow}:AL{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("E{$totalRow}:AK{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.##');
                 $sheet->getStyle("AL{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.##;-#,##0.##;0');
 

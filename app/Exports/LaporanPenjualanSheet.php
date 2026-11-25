@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -217,7 +218,10 @@ class LaporanPenjualanSheet implements FromArray, WithEvents, WithStrictNullComp
                     ]);
                 } else {
                     $sheet->getStyle("A{$firstDataRow}:AJ{$lastDataRow}")->applyFromArray([
-                        'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical' => Alignment::VERTICAL_CENTER,
+                        ],
                         'borders' => [
                             'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']],
                         ],
@@ -226,10 +230,24 @@ class LaporanPenjualanSheet implements FromArray, WithEvents, WithStrictNullComp
                         $sheet->getRowDimension($r)->setRowHeight(19);
                     }
 
-                    $sheet->getStyle("A{$firstDataRow}:A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("B{$firstDataRow}:D{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-                    $sheet->getStyle("E{$firstDataRow}:AJ{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                    $sheet->getStyle("E{$firstDataRow}:AJ{$lastDataRow}")->getNumberFormat()->setFormatCode('#,##0.##');
+                    $sheet->getStyle("E{$firstDataRow}:AJ{$lastDataRow}")->getNumberFormat()->setFormatCode('#,##0');
+
+                    foreach ($rows as $idx => $item) {
+                        $r = $firstDataRow + $idx;
+                        if (! empty($item['no_rekom'])) {
+                            $sheet->setCellValueExplicit("D{$r}", self::amankanSel((string) $item['no_rekom']), DataType::TYPE_STRING);
+                        }
+                        for ($d = 1; $d <= 31; $d++) {
+                            $v = (float) ($item['harian'][$d] ?? 0);
+                            if (fmod($v, 1.0) != 0.0) {
+                                $col = Coordinate::stringFromColumnIndex(4 + $d);
+                                $sheet->getStyle("{$col}{$r}")->getNumberFormat()->setFormatCode('#,##0.00');
+                            }
+                        }
+                        if (fmod((float) ($item['total'] ?? 0), 1.0) != 0.0) {
+                            $sheet->getStyle("AJ{$r}")->getNumberFormat()->setFormatCode('#,##0.00');
+                        }
+                    }
                 }
 
                 // 4. BARIS JUMLAH
@@ -245,9 +263,17 @@ class LaporanPenjualanSheet implements FromArray, WithEvents, WithStrictNullComp
                         'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']],
                     ],
                 ]);
-                $sheet->getStyle("A{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("E{$totalRow}:AJ{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                $sheet->getStyle("E{$totalRow}:AJ{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.##');
+                $sheet->getStyle("A{$totalRow}:AJ{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("E{$totalRow}:AJ{$totalRow}")->getNumberFormat()->setFormatCode('#,##0');
+                foreach ($this->bulan['total_harian'] ?? [] as $d => $val) {
+                    if (fmod((float) $val, 1.0) != 0.0) {
+                        $col = Coordinate::stringFromColumnIndex(4 + (int) $d);
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                    }
+                }
+                if (fmod((float) ($this->bulan['total_penjualan'] ?? 0), 1.0) != 0.0) {
+                    $sheet->getStyle("AJ{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                }
 
                 // 5. BLOK TANDA TANGAN KANAN BAWAH
                 foreach ([$sigStart, $sigStart + 1, $sigStart + 2, $sigStart + 6, $sigStart + 7] as $sr) {

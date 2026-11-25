@@ -85,7 +85,7 @@ class PenyaluranService
             $this->pasokan->realisasi($pas, $disetujui, $aktual);
 
             $waktuPenyaluran = $tanggal ?? now();
-            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), '0', $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
+            $this->stok->catat(JenisMutasi::Penyaluran, Dec::sub('0', $aktual), $penyaluran, 'Penyaluran ' . $p->nomor_pengajuan, $petugas, $waktuPenyaluran);
             if (Dec::gt($sisa, 0)) {
                 $this->sesuaikanTagihan($p, $tagihan, $aktual, $petugas);
             }

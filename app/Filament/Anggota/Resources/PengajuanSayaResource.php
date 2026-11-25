@@ -31,6 +31,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PengajuanSayaResource extends Resource
@@ -105,6 +106,7 @@ class PengajuanSayaResource extends Resource
                 TextInput::make('harga_tampil')->label('Harga per liter')->default(fn () => Format::rupiah($harga()))->disabled()->dehydrated(false),
                 TextInput::make('total_tampil')->label('Total estimasi pembayaran')->default('Rp0')->disabled()->dehydrated(false),
                 DatePicker::make('tanggal_rencana')->label('Tanggal rencana pembelian')->required()->minDate(today())->default(today()),
+                TextInput::make('tujuan')->label('Tujuan')->default('Melaut')->disabled()->dehydrated(false),
                 Textarea::make('catatan')->maxLength(500)->columnSpanFull(),
             ])->columns(2),
         ]);
@@ -122,6 +124,7 @@ class PengajuanSayaResource extends Resource
                 TextEntry::make('kapal.nama_kapal')->label('Kapal'),
                 TextEntry::make('suratRekomendasi.nomor_surat')->label('Surat rekomendasi'),
                 TextEntry::make('tanggal_rencana')->label('Rencana pembelian')->date('d/m/Y')->placeholder('-'),
+                TextEntry::make('tujuan')->label('Tujuan')->placeholder('Melaut'),
                 TextEntry::make('liter_diminta')->label('Jumlah diminta')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextEntry::make('penyaluran.liter_aktual')->label('Disalurkan (aktual)')->formatStateUsing(fn ($state) => Format::liter($state))->placeholder('-'),
                 TextEntry::make('tagihan.nomor_tagihan')->label('No. tagihan')->placeholder('-'),
@@ -165,6 +168,7 @@ class PengajuanSayaResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', '!=', StatusPengajuan::Selesai->value))
             ->columns([
                 TextColumn::make('nomor_pengajuan')->label('No. pengajuan')->searchable()->sortable(),
                 TextColumn::make('created_at')->label('Diajukan')->dateTime('d/m/Y H:i')->sortable(),
@@ -172,10 +176,11 @@ class PengajuanSayaResource extends Resource
                 TextColumn::make('liter_diminta')->label('Liter')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('total')->label('Total')->state(fn (PengajuanPembelian $record) => Format::rupiah($record->total_tagihan ?? $record->total_estimasi)),
                 TextColumn::make('tanggal_rencana')->label('Rencana')->date('d/m/Y'),
+                TextColumn::make('tujuan')->label('Tujuan')->placeholder('Melaut')->toggleable(),
                 TextColumn::make('status_label')->label('Status')->badge()->color(fn ($record) => $record->statusTampil()[1]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->filters([SelectFilter::make('status')->options(StatusPengajuan::opsi())])
+            ->filters([SelectFilter::make('status')->options(collect(StatusPengajuan::opsi())->except(StatusPengajuan::Selesai->value)->all())])
             ->recordActions([ViewAction::make(), static::batalkanAksi()]);
     }
 

@@ -99,6 +99,7 @@ class PengajuanService
                 'harga_estimasi_per_liter' => $harga,
                 'total_estimasi' => Dec::mul($liter, $harga),
                 'tanggal_rencana' => $tanggal->toDateString(),
+                'tujuan' => 'Melaut',
                 'catatan' => $data['catatan'] ?? null,
                 'status' => StatusPengajuan::MenungguPersetujuan,
                 'status_pembayaran' => StatusPembayaran::BelumDibayar,

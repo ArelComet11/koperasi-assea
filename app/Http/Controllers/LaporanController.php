@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Exports\LaporanExport;
 use App\Exports\LaporanPenjualanExport;
+use App\Exports\LaporanPenjualanHarianExport;
+use App\Exports\LaporanRealisasiExport;
+use App\Exports\LaporanStokSolarExport;
 use App\Exports\LaporanSuratRekomendasiExport;
 use App\Services\AuditService;
 use App\Services\LaporanService;
@@ -14,13 +17,19 @@ class LaporanController extends Controller
 {
     public function export(Request $request, LaporanService $svc)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
         [$jenis, $filter] = $this->validasi($request);
         $laporan = $svc->bangun($jenis, $filter);
         AuditService::catat('laporan.diekspor', null, null, ['jenis' => $jenis] + $filter, $laporan['judul']);
 
         $export = match ($jenis) {
             'surat' => new LaporanSuratRekomendasiExport($laporan),
+            'penjualan_harian' => new LaporanPenjualanHarianExport($laporan),
             'penjualan' => new LaporanPenjualanExport($laporan),
+            'stok_solar' => new LaporanStokSolarExport($laporan),
+            'realisasi' => new LaporanRealisasiExport($laporan),
             default => new LaporanExport($laporan),
         };
 
@@ -29,11 +38,17 @@ class LaporanController extends Controller
 
     public function cetak(Request $request, LaporanService $svc)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
         [$jenis, $filter] = $this->validasi($request);
         $laporan = $svc->bangun($jenis, $filter);
         $view = match ($jenis) {
             'surat' => 'cetak.laporan-surat',
+            'penjualan_harian' => 'cetak.laporan-penjualan-harian',
             'penjualan' => 'cetak.laporan-penjualan',
+            'stok_solar' => 'cetak.laporan-stok-solar',
+            'realisasi' => 'cetak.laporan-realisasi',
             default => 'cetak.laporan',
         };
 

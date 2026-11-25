@@ -15,6 +15,28 @@ class Format
         return rtrim(rtrim($s, '0'), ',') . ' L';
     }
 
+    public static function gt(mixed $v): ?string
+    {
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        $s = number_format((float) Dec::n($v), 2, ',', '.');
+
+        return rtrim(rtrim($s, '0'), ',') . ' GT';
+    }
+
+    public static function pk(mixed $v): ?string
+    {
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        $s = number_format((float) Dec::n($v), 2, ',', '.');
+
+        return rtrim(rtrim($s, '0'), ',') . ' PK';
+    }
+
     public static function persen(mixed $bagian, mixed $total): float
     {
         return Dec::gt($total, 0) ? round((float) $bagian / (float) $total * 100, 1) : 0.0;

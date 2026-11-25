@@ -16,7 +16,7 @@
 
     <form method="GET" class="kt-form">
         <div><label for="periode">Periode</label><input class="kt-in" type="month" id="periode" name="periode" value="{{ $periodeInput }}"></div>
-        <div><label for="cari">Cari anggota / kapal / nomor surat</label><input class="kt-in" type="search" id="cari" name="cari" value="{{ $cari }}"></div>
+        <div><label for="cari">Cari anggota / kapal / no. rekomendasi</label><input class="kt-in" type="search" id="cari" name="cari" value="{{ $cari }}"></div>
         <button class="kt-btn" type="submit">Terapkan</button>
     </form>
 
@@ -24,7 +24,7 @@
 
     <div class="kt-wrap">
         <table class="kt-t">
-            <thead><tr><th>Anggota</th><th>Kapal</th><th>No. surat</th><th>Batas</th><th>Aktual</th><th>Alokasi aktif</th><th>Sisa</th><th>Penggunaan</th></tr></thead>
+            <thead><tr><th>Anggota</th><th>Kapal</th><th>No. Rekomendasi</th><th>Batas</th><th>Aktual</th><th>Alokasi aktif</th><th>Sisa</th><th>Penggunaan</th></tr></thead>
             <tbody>
             @forelse($rows as $r)
                 <tr>

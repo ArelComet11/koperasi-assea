@@ -7,6 +7,7 @@ use App\Filament\Concerns\KhususAnggota;
 use App\Models\PengajuanPembelian;
 use App\Support\Dec;
 use App\Support\Format;
+use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -42,6 +43,7 @@ class RiwayatTransaksiResource extends Resource
                 TextColumn::make('penyaluran.liter_aktual')->label('Liter diterima')->formatStateUsing(fn ($state) => Format::liter($state)),
                 TextColumn::make('harga_per_liter')->label('Harga/L')->formatStateUsing(fn ($state) => Format::rupiah($state)),
                 TextColumn::make('total_tagihan')->label('Total')->formatStateUsing(fn ($state) => Format::rupiah($state)),
+                TextColumn::make('tujuan')->label('Tujuan')->placeholder('Melaut')->toggleable(),
                 TextColumn::make('koreksi')->label('Koreksi')->badge()->color('warning')
                     ->state(function (PengajuanPembelian $record): ?string {
                         $selisih = $record->tagihan?->penyesuaian->where('diterapkan', false)->sum('selisih');
@@ -50,7 +52,10 @@ class RiwayatTransaksiResource extends Resource
                     })
                     ->placeholder('-'),
             ])
-            ->defaultSort('selesai_pada', 'desc');
+            ->defaultSort('selesai_pada', 'desc')
+            ->recordActions([
+                ViewAction::make()->url(fn (PengajuanPembelian $record) => PengajuanSayaResource::getUrl('view', ['record' => $record])),
+            ]);
     }
 
     public static function getPages(): array

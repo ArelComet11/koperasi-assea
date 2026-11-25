@@ -21,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class KapalResource extends Resource
 {
@@ -51,9 +52,13 @@ class KapalResource extends Resource
             TextInput::make('kode_kapal')->required()->maxLength(30)->unique(ignoreRecord: true),
             TextInput::make('nama_kapal')->required()->maxLength(150),
             TextInput::make('nama_pemilik')->maxLength(150)->helperText('Boleh berbeda dari nama anggota bila kapal terdaftar atas nama lain.'),
-            TextInput::make('no_registrasi')->label('Nomor registrasi')->maxLength(60)->unique(ignoreRecord: true),
-            TextInput::make('jenis_kapal')->maxLength(60),
+            TextInput::make('nomor_rekomendasi_tampil')->label('Nomor rekomendasi')
+                ->formatStateUsing(fn (?Kapal $record) => $record?->suratRekomendasiTerbaru?->nomor_surat ?: $record?->no_registrasi ?: '-')
+                ->disabled()->dehydrated(false)
+                ->helperText('Diambil otomatis dari Surat Rekomendasi terbaru kapal ini.')
+                ->visibleOn('edit'),
             TextInput::make('ukuran_gt')->label('Ukuran / kapasitas (GT)')->numeric()->minValue(0),
+            TextInput::make('daya_pk')->label('Daya mesin (PK)')->numeric()->minValue(0),
             Select::make('status')->options(StatusAktif::opsi())->default('aktif')->required(),
             Textarea::make('keterangan')->columnSpanFull(),
         ])->columns(2);
@@ -66,9 +71,11 @@ class KapalResource extends Resource
                 TextEntry::make('kode_kapal'), TextEntry::make('nama_kapal'),
                 TextEntry::make('anggota.nama_lengkap')->label('Anggota pemilik'),
                 TextEntry::make('nama_pemilik')->placeholder('-'),
-                TextEntry::make('no_registrasi')->placeholder('-'),
-                TextEntry::make('jenis_kapal')->placeholder('-'),
-                TextEntry::make('ukuran_gt')->label('Ukuran (GT)')->placeholder('-'),
+                TextEntry::make('nomor_rekomendasi')->label('Nomor rekomendasi')
+                    ->state(fn (Kapal $record) => $record->suratRekomendasiTerbaru?->nomor_surat ?: $record->no_registrasi)
+                    ->placeholder('-'),
+                TextEntry::make('ukuran_gt')->label('Ukuran (GT)')->formatStateUsing(fn ($state) => Format::gt($state))->placeholder('-'),
+                TextEntry::make('daya_pk')->label('Daya (PK)')->formatStateUsing(fn ($state) => Format::pk($state))->placeholder('-'),
                 TextEntry::make('status')->badge(),
             ])->columns(3),
             Section::make('Riwayat pembelian BBM kapal ini')->schema([
@@ -85,12 +92,19 @@ class KapalResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['anggota', 'suratRekomendasiTerbaru']))
             ->columns([
                 TextColumn::make('kode_kapal')->label('Kode')->searchable()->sortable(),
                 TextColumn::make('nama_kapal')->label('Nama kapal')->searchable()->sortable(),
                 TextColumn::make('anggota.nama_lengkap')->label('Anggota')->searchable()->sortable(),
-                TextColumn::make('no_registrasi')->label('No. registrasi')->searchable()->placeholder('-'),
-                TextColumn::make('jenis_kapal')->label('Jenis')->placeholder('-')->toggleable(),
+                TextColumn::make('nomor_rekomendasi')->label('Nomor rekomendasi')
+                    ->state(fn (Kapal $record) => $record->suratRekomendasiTerbaru?->nomor_surat ?: $record->no_registrasi)
+                    ->searchable(query: fn (Builder $query, string $search) => $query->where(fn (Builder $w) => $w
+                        ->whereHas('suratRekomendasi', fn (Builder $q) => $q->where('nomor_surat', 'like', "%{$search}%"))
+                        ->orWhere('no_registrasi', 'like', "%{$search}%")))
+                    ->placeholder('-'),
+                TextColumn::make('ukuran_gt')->label('GT')->formatStateUsing(fn ($state) => Format::gt($state))->placeholder('-')->sortable(),
+                TextColumn::make('daya_pk')->label('PK')->formatStateUsing(fn ($state) => Format::pk($state))->placeholder('-')->sortable(),
                 TextColumn::make('status')->badge(),
             ])
             ->defaultSort('kode_kapal')

@@ -21,7 +21,7 @@ class SuratRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('nomor_surat')->label('Nomor surat'),
+            TextColumn::make('nomor_surat')->label('No. Rekomendasi'),
             TextColumn::make('kapal.nama_kapal')->label('Kapal'),
             TextColumn::make('berlaku_mulai')->date('d/m/Y')->label('Mulai'),
             TextColumn::make('berlaku_sampai')->date('d/m/Y')->label('Sampai'),
